@@ -6,6 +6,8 @@ int main(void)
 	int fd[3][2];
 	int i;
 
+	atexit(exiting);
+
 	//pipe 생성
 	if (pipe(fd[0]) || pipe(fd[1]) || pipe(fd[2]))
 	{
@@ -27,26 +29,60 @@ int main(void)
 	{
 	case 0:
 		letterGame(fd[0]);
-		//printf("1\n");
 		break;
 
 	case 1:
 		snakeGame(fd[1]);
-		//printf("2\n");
 		break;
 
 	case 2:
 		hurdleGame(fd[2]);
-		//printf("3\n");
 		break;
 
 	case 3:
 		{
-			char str[] = "Hi";
-			write(fd[0][1],  str, 3);
-
+			showCursor(0);
 			// 종료 시까지 대기
-			while ((wait(NULL) != -1) || (errno == EINTR));
+			while (1)
+			{
+				int ch = getch();
+				
+				switch (ch)
+				{
+				case 32: // Space Bar
+					write(fd[2][1], &ch, 1);
+					break;
+
+				case 27: // 상하좌우
+					if (getch() == 91)
+					{
+						ch = getch();
+
+						if ((ch >= 65) && (ch <= 68))
+							write(fd[1][1], &ch, 1);
+					}
+					break;
+
+				default:
+					// 알파벳
+					if (((ch >= 'A') && (ch <= 'Z')) || ((ch >= 'a') && (ch <= 'z')))
+					{
+						write(fd[0][1], &ch, 1);
+					}
+
+					else if (ch == 10) // 임시 구문
+					{
+						return 0;
+					}
+
+					else
+					{
+						printf(">>%d<<\n", ch);
+						fflush(stdout);
+					}
+					break;
+				}
+			}
 		}
 		break;
 	}
