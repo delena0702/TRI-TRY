@@ -1,7 +1,7 @@
 #include "main.h"
 
 //이차원 배열에서 사용하기 쉽도록 각각의 블럭을 정의해준다
-#define MAP_SIZE 18;
+#define MAP_SIZE 18
 #define SNAKE 0x00A0
 #define APPLE 0x00A1
 #define WALL 0x00A2
@@ -12,22 +12,28 @@
 #define SOUTH 0x00B2
 #define NOUTH 0x00B3
 
-typedef struct snakePosition {
+typedef enum { FALSE, TRUE } bool;	//bool 타입이 c에 없다,,, 정의해줌.
+typedef struct Position {
 	int x;
 	int y;
-} snakePst;
+} Pst;
 
 void snakeGame(int fd[])
 {
 	int map[MAP_SIZE + 2][MAP_SIZE + 2] = { 0 };	//맵을 표현할 2차원 변수, 벽을 포함해서 가로,세로 모두 +2
-	snakePst snake[MAP_SIZE * MAP_SIZE] = { {0,0}, };	//뱀의 위치를 저장해줄 변수.
-
-	for (int x = 0; x < MAP_SIZE - 1; x++) {
-		Map[0][x] = Map[x][19] = Map[19][19 - x] = Map[19 - x][0] = WALL;	//맵에 벽을 만들어준다.
+	Pst snake[MAP_SIZE * MAP_SIZE] = { {0,0}, };	//뱀의 위치를 저장해줄 변수.
+	Pst apple = { 0,0 };
+	//프로그램 자체를 돌리는가에 대한 변수, 디버그 모드 여부에 대한 변수, 노클립 여부에 대한 변수
+	bool Is_Game = TRUE, Is_Ingame = FALSE, Is_Mode_Debug = FALSE, Is_Mode_Noclip = FALSE;
+	int snakeSpeed = 250; //250ms마다 한 칸 움직인다는 의미.
+	
+	int x;
+	for (x = 0; x < MAP_SIZE - 1; x++) {
+		map[0][x] = map[x][MAP_SIZE - 1] = map[MAP_SIZE - 1][MAP_SIZE - 1 - x] = map[MAP_SIZE - 1 - x][0] = WALL;	//맵에 벽을 만들어준다.
 	}
 
 	char ch;	//키보드 값 받는 변수.
-	while (true)
+	while (TRUE)
 	{
 		read(fd[0], &ch, 1);	//부모 프로세스에서 값을 받아온다
 
@@ -71,8 +77,8 @@ void Snake_print(int n);
 BOOL Is_Game = TRUE, Is_Ingame = FALSE, Is_Mode_Debug = FALSE, Is_Mode_Noclip = FALSE;
 
 int main() {
-	int Difficulty_speed[7] = { 0, 250, 200, 150, 120, 80, 44 }, Difficulty_num, Difficulty_Secret = 0;												//난이도 속도, 번호, 시크릿
-	char Difficulty_Script[7][12] = { "테스트 모드", "아주 쉬움  ", "   쉬움    ", "   보통    ", "  어려움   ", "아주 어려움", "  지옥급   "  };	//난이도 이름
+	int Difficulty_speed[7] = 250,
+	char Difficulty_Script[7][12] = { "테스트 모드", "아주 쉬움  ",
 
 	int Start_time, Timer, Time_O;															//인게임 시작 시간, 지금까지 흐른 시간, 원래 시간
 	int Snake_length, MAX_Snake_length, Snake_direction, Snake_direction_O, Snake_speed;	//뱀 길이, 뱀 최대 길이, 뱀 방향, 뱀 저번 방향, 뱀의 속도
@@ -96,13 +102,6 @@ int main() {
 		system("cls");					//화면 비우고
 		Map_print();					//다시 넣어줌
 
-		//난이도 선택 창
-		gotoxy(4, 3);
-		printf(" 원하시는 난이도를 선택해주세요.");
-		gotoxy(4, 4);
-		printf("  (↑↓로 고르기, Enter로 선택)");
-		gotoxy(6, 6);
-		printf("▶");
 
 		for (x = 1; x <= 5; x++) {
 			gotoxy(10, 4 + 2 * x);
@@ -116,107 +115,10 @@ int main() {
 			Text_color(0x0007);														//다시 하얀색으로 바꿔줌
 		}
 
-		while (Snake_speed == 0) { //난이도(속도)가 정해지기 전까지
-			if (_kbhit()) {
-				key = _getch();
-
-				switch (key) {
-				case 72:													//위 버튼 누르면
-					if (Difficulty_num > 1) {								//가장 위가 아니라면
-						gotoxy(6, 2 * (Difficulty_num + 2));					//원래 있던 자리를
-						printf("  ");											//비우고
-						gotoxy(6, 2 * (Difficulty_num + 1));					//위에
-						printf("▶");											//삼각형 넣어줌
-						Difficulty_num--;										//난이도 하락
-					}
-					break;
-
-				case 80:													//아래 버튼 누르면
-					if (Difficulty_num < 5 + (Difficulty_Secret / 10)) {	//가장 아래(시크릿 고려)가 아니라면
-						gotoxy(6, 2 * (Difficulty_num + 2));					//원래 있던 자리를
-						printf("  ");											//비우고
-						gotoxy(6, 2 * (Difficulty_num + 3));					//아래에
-						printf("▶");											//삼각형 넣어줌
-						Difficulty_num++;										//난이도 상승
-					}
-
-					else if ((Difficulty_num == 5) && (Difficulty_Secret <= 10)) {	//만약 시크릿이 안열렸다면
-						Difficulty_Secret++;											//시크릿 변수++
-						if (Difficulty_Secret == 10) {									//시크릿 조건 달성시
-							gotoxy(10, 16);												//아주 어려움 밑으로 가서
-							Text_color(0x000C);											//빨강색으로 칠해줌
-							printf("%s\t(%4dms )", Difficulty_Script[6], Difficulty_speed[6]);
-							Text_color(0x0007);											//다시 하얀색
-							Difficulty_Secret++;										//++해줌으로써 다시는 이 함수가 실행되지 못하게 한다
-						}
-					}
-					break;
-
-				case 100:													//d를 누르면
-					Is_Mode_Debug = 1 - Is_Mode_Debug;						//디버그 모드를 조정 가능
-					if (!Is_Mode_Debug) Is_Mode_Noclip = FALSE;					//디버그 모드가 아니면 노클립 모드도 해제해준다
-					Debug_Show();											//디버그인지 아닌지 표시해준다
-					break;
-
-				case 110:													//n을 누르면
-					if (Is_Mode_Debug) Is_Mode_Noclip = 1 - Is_Mode_Noclip;	//디버그 모드라면 노클립 모드를 조정 가능
-					Debug_Show();											//노클립 모든지 체크해줌
-					break;
-
-				case 115:													//s를 누르면
-					gotoxy(6, 2 * (Difficulty_num + 2));				//삼각형을 아예 지워버림
-					printf("  ");
-					gotoxy(6, 18);
-					printf("▶");
-					gotoxy(10, 18);										//테스트 모드 진입 창을 출력
-					printf("%s\t(    ms )", Difficulty_Script[0]);
-
-					do {
-						gotoxy(25, 18);
-						printf("    ");
-						gotoxy(25, 18);
-						scanf_s("%d", &Difficulty_speed[0]);
-					} while (Difficulty_speed[0] < 0);		//0보다 클 때까지
-
-					Difficulty_num = 0;						//난이도를 테스트 모드로 확정
-					Snake_speed = Difficulty_speed[0];		//입력한 값으로 속도 확정
-
-					if (Difficulty_speed[0] == 0){			//만약 속도를 0으로 입력했다면
-						Difficulty_num = 1;					//처음(아주 쉬움)으로 다시 설정해줌
-					gotoxy(6, 6);
-					printf("▶");
-					gotoxy(6, 18);							//속도 선택창을 지움
-					printf("                           ");
-					}
-					break;
-
-				case 13: Snake_speed = Difficulty_speed[Difficulty_num]; break; //엔터치면 속도를 정한다 = while문 탈출
-
-				case 32:								//스페이스를 누르면
-					gotoxy(0, 23);						//밑으로 가서
-					return 0;							//게임 종료
-				}
-			}
-		}
-
 		Is_Ingame = Is_Game_move = TRUE;	//게임 시작한다!!!!
 
 		system("cls");					//난이도 창 제거
 		Map_print();					//다시 이쁘게 프린트
-
-		gotoxy(17, 6);
-		printf("READY?");
-		Sleep(2000);					//대기 까 플레이어야
-		gotoxy(17, 6);
-		printf("      ");				//레디 글씨 지워줌
-
-		gotoxy(0, 21);
-		printf("난이도 : ");								//난이도는 한번만 띄워주면 되므로 while문 밖에 써준다
-		if (Difficulty_num == 6) Text_color(0x000C);			//지옥급만 빨강색으로 칠해줌
-		printf("%s\n", Difficulty_Script[Difficulty_num]);		//난이도명 출력
-		if (Difficulty_num == 6) Text_color(0x0007);			//지옥급만 하얀색으로 다시 칠해줌
-		gotoxy(45, 1);
-		printf("[Enter] PAUSE");
 
 		Start_time = clock();			//시작시간
 		Snake_x[0] = Snake_y[0] = 9;	//시작 위치
