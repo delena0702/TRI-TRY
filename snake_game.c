@@ -1,18 +1,19 @@
 #include "main.h"
+#include <time.h>
 
-//이차원 배열에서 사용하기 쉽도록 각각의 블럭을 정의해준다
+//define types of blocks
 #define MAP_SIZE 18
 #define SNAKE 0x00A0
 #define APPLE 0x00A1
 #define WALL 0x00A2
 
-//방향도 정의해줌으로써 이해하기 쉽게 만들어준다
+//define directions of snake's head
 #define EAST 0x00B0
 #define WEST 0x00B1
 #define SOUTH 0x00B2
 #define NOUTH 0x00B3
 
-typedef enum { FALSE, TRUE } bool;	//bool 타입이 c에 없다,,, 정의해줌.
+typedef enum { FALSE, TRUE } bool;	//to use boolean type in C
 typedef struct Position {
 	int x;
 	int y;
@@ -20,27 +21,41 @@ typedef struct Position {
 
 void snakeGame(int fd[])
 {
-	int map[MAP_SIZE + 2][MAP_SIZE + 2] = { 0 };	//맵을 표현할 2차원 변수, 벽을 포함해서 가로,세로 모두 +2
-	Pst snake[MAP_SIZE * MAP_SIZE] = { {0,0}, };	//뱀의 위치를 저장해줄 변수.
+	int map[MAP_SIZE + 2][MAP_SIZE + 2] = { 0 };	//2-dimensional array to store map's info. because of WALL, +2
+	Pst snake[MAP_SIZE * MAP_SIZE] = { {0,0}, };	//to store snake's position.
 	Pst apple = { 0,0 };
-	//프로그램 자체를 돌리는가에 대한 변수, 디버그 모드 여부에 대한 변수, 노클립 여부에 대한 변수
+
 	bool Is_Game = TRUE, Is_Ingame = FALSE, Is_Mode_Debug = FALSE, Is_Mode_Noclip = FALSE;
-	int snakeSpeed = 250; //250ms마다 한 칸 움직인다는 의미.
-	
+	int snakeSpeed = 250; //snake moves at every 250ms.
+
 	int x;
 	for (x = 0; x < MAP_SIZE - 1; x++) {
-		map[0][x] = map[x][MAP_SIZE - 1] = map[MAP_SIZE - 1][MAP_SIZE - 1 - x] = map[MAP_SIZE - 1 - x][0] = WALL;	//맵에 벽을 만들어준다.
+		map[0][x] = map[x][MAP_SIZE - 1] = map[MAP_SIZE - 1][MAP_SIZE - 1 - x] = map[MAP_SIZE - 1 - x][0] = WALL;	//make WALLs into map.
 	}
 
-	char ch;	//키보드 값 받는 변수.
+	char ch;	//to store direction key.
+	struct timeval start;	//start time
+	struct timeval tmp;	//current time
+	gettimeofday(&start, NULL);
+
 	while (TRUE)
 	{
-		read(fd[0], &ch, 1);	//부모 프로세스에서 값을 받아온다
+		gettimeofday(&tmp, NULL);
 
-		switch (ch)	//키보드 입력에 의해 분기
+		if (tmp.tv_usec - start.tv_usec >= 250000 || ((tmp.tv_sec > start.tv_sec) && (start.tv_usec - tmp.tv_usec <= 750000))) {
+			printf("clap %d %d\n", (int)start.tv_usec, (int)tmp.tv_usec);
+			start.tv_sec = tmp.tv_sec;
+			start.tv_usec = tmp.tv_usec;
+		}
+
+		read(fd[0], &ch, 1);	//read info to parent process
+
+		switch (ch)
 		{
 		case 65:
+			gettimeofday(&start, NULL);
 			printf("Up!\n");
+			printf("test : %d(s) %d(us)\n", (int)start.tv_sec, (int)start.tv_usec);
 			break;
 
 		case 66:
