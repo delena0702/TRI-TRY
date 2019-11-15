@@ -1,61 +1,77 @@
 #include "main.h"
-#include <time.h>
+#include <stdio.h>
+#include <signal.h>
+#include <sys/time.h>
+#include <string.h>
+#include <stdlib.h>
 
-//define types of blocks
+//ì •ì˜; ë§µì˜ í¬ê¸° (í† ì˜ í›„ ë³€ê²½ ê°€ëŠ¥)
 #define MAP_SIZE 18
+
+//ì •ì˜; ë¸”ëŸ­ì˜ ì¢…ë¥˜. í¸ì˜ ìƒ ì •ì˜.
 #define SNAKE 0x00A0
 #define APPLE 0x00A1
 #define WALL 0x00A2
 
-//define directions of snake's head
+//ì •ì˜; ë±€ì˜ ë¨¸ë¦¬ ë°©í–¥. í¸ì˜ ìƒ ì •ì˜.
 #define EAST 0x00B0
 #define WEST 0x00B1
 #define SOUTH 0x00B2
-#define NOUTH 0x00B3
+#define NORTH 0x00B3
 
-typedef enum { FALSE, TRUE } bool;	//to use boolean type in C
+//ì •ì˜; bool íƒ€ì…. Cì–¸ì–´ì— boolean íƒ€ì…ì´ ì—†ì—‡ìŒ,,,?
+typedef enum { FALSE, TRUE } Bool;
+
+//ì •ì˜; Pst íƒ€ì…. 2ì°¨ì› ì¢Œí‘œ êµ¬ì¡°ì²´.
 typedef struct Position {
 	int x;
 	int y;
 } Pst;
 
+void timer_handler(int signum){
+	static int count = 0;
+	fprintf(stderr, "test : %d\n", count++);
+}
+
 void snakeGame(int fd[])
 {
-	int map[MAP_SIZE + 2][MAP_SIZE + 2] = { 0 };	//2-dimensional array to store map's info. because of WALL, +2
-	Pst snake[MAP_SIZE * MAP_SIZE] = { {0,0}, };	//to store snake's position.
-	Pst apple = { 0,0 };
-
-	bool Is_Game = TRUE, Is_Ingame = FALSE, Is_Mode_Debug = FALSE, Is_Mode_Noclip = FALSE;
-	int snakeSpeed = 250; //snake moves at every 250ms.
-
+	int map[MAP_SIZE + 2][MAP_SIZE + 2] = { 0 };	//ë§µì„ í‘œí˜„í•˜ê¸° ìœ„í•œ 2ì°¨ì› ë°°ì—´. ë²½ ë•Œë¬¸ì— +2
 	int x;
 	for (x = 0; x < MAP_SIZE - 1; x++) {
-		map[0][x] = map[x][MAP_SIZE - 1] = map[MAP_SIZE - 1][MAP_SIZE - 1 - x] = map[MAP_SIZE - 1 - x][0] = WALL;	//make WALLs into map.
+		map[0][x] = map[x][MAP_SIZE - 1] = map[MAP_SIZE - 1][MAP_SIZE - 1 - x] = map[MAP_SIZE - 1 - x][0] = WALL;	//ë§µì— ë²½ì„ ë§Œë“¤ì–´ì¤€ë‹¤.
 	}
 
-	char ch;	//to store direction key.
-	struct timeval start;	//start time
-	struct timeval tmp;	//current time
-	gettimeofday(&start, NULL);
+	Pst snake[MAP_SIZE * MAP_SIZE] = { {0,0}, };	//ë±€ì˜ ë¨¸ë¦¬ì™€ ê° ëª¸í†µì˜ ìœ„ì¹˜ë¥¼ ì €ì¥í•  ë°°ì—´.
+	Pst apple = { 0,0 };	//ì‚¬ê³¼ì˜ ìœ„ì¹˜ë¥¼ ì €ì¥í•  ë³€ìˆ˜.
 
+	//Bool Is_Game = TRUE, Is_Ingame = FALSE;
+	int snakeSpeed = 250; //ë±€ì´ ì›€ì§ì¼ interval.
+
+	char ch;	//ì…ë ¥ í‚¤ë¥¼ ì €ì¥í•˜ê¸° ìœ„í•œ ë³€ìˆ˜.
+	struct sigaction sa;
+	sa.sa_handler = &timer_handler;
+	sigaction(SIGALRM, &sa, NULL);
+
+	struct itimerval timer;
+	//ì²˜ìŒ 1íšŒì— ëŒ€í•œ interval
+	timer.it_value.tv_sec = 0;
+	timer.it_value.tv_usec = 250000;
+	//í•œ ë²ˆ ì‹¤í–‰ ì´í›„ì— ëŒ€í•œ interval
+	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = 250000;
+
+	/* Start a virtual timer. It counts down whenever this process is executing. */
+	setitimer (ITIMER_REAL, &timer, NULL);
+	printf("timer setting complete.\n");
+	
 	while (TRUE)
 	{
-		gettimeofday(&tmp, NULL);
-
-		if (tmp.tv_usec - start.tv_usec >= 250000 || ((tmp.tv_sec > start.tv_sec) && (start.tv_usec - tmp.tv_usec <= 750000))) {
-			printf("clap %d %d\n", (int)start.tv_usec, (int)tmp.tv_usec);
-			start.tv_sec = tmp.tv_sec;
-			start.tv_usec = tmp.tv_usec;
-		}
-
 		read(fd[0], &ch, 1);	//read info to parent process
 
 		switch (ch)
 		{
 		case 65:
-			gettimeofday(&start, NULL);
 			printf("Up!\n");
-			printf("test : %d(s) %d(us)\n", (int)start.tv_sec, (int)start.tv_usec);
 			break;
 
 		case 66:
@@ -71,14 +87,13 @@ void snakeGame(int fd[])
 			break;
 		}
 	}
-
 }
 
 /*
-//¿¹Àü¿¡ ½º³×ÀÌÅ© °ÔÀÓ ¸¸µç°Çµ¥ Âü°í¿ëÀ¸·Î ÀÏ´Ü ºÙ¿©³ÖÀ½, ±èÀçÇö, 191109.1947
-//¸¸µé¸é¼­ Á¡Á¡ Áö¿ö³ª°¥ ¿¹Á¤ÀÓ, ±èÀçÇö, 191109.1956
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å© ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Çµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï´ï¿½ ï¿½Ù¿ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, 191109.1947
+//ï¿½ï¿½ï¿½ï¿½é¼­ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, 191109.1956
 
-//ÇÔ¼ö Á¤ÀÇ
+//ï¿½Ô¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 void gotoxy(int x, int y);
 void CursorView(int show);
 void Snake_clear(int n);
@@ -88,34 +103,34 @@ void Object_move(int x, int y, int a);
 void Object_print(int a);
 void Snake_print(int n);
 
-//ÇÁ·Î±×·¥ ÀÚÃ¼¸¦ µ¹¸®´Â°¡¿¡ ´ëÇÑ º¯¼ö, µğ¹ö±× ¸ğµå ¿©ºÎ¿¡ ´ëÇÑ º¯¼ö, ³ëÅ¬¸³ ¿©ºÎ¿¡ ´ëÇÑ º¯¼ö
+//ï¿½ï¿½ï¿½Î±×·ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Â°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½Å¬ï¿½ï¿½ ï¿½ï¿½ï¿½Î¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 BOOL Is_Game = TRUE, Is_Ingame = FALSE, Is_Mode_Debug = FALSE, Is_Mode_Noclip = FALSE;
 
 int main() {
 	int Difficulty_speed[7] = 250,
-	char Difficulty_Script[7][12] = { "Å×½ºÆ® ¸ğµå", "¾ÆÁÖ ½¬¿ò  ",
+	char Difficulty_Script[7][12] = { "ï¿½×½ï¿½Æ® ï¿½ï¿½ï¿½", "ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½  ",
 
-	int Start_time, Timer, Time_O;															//ÀÎ°ÔÀÓ ½ÃÀÛ ½Ã°£, Áö±İ±îÁö Èå¸¥ ½Ã°£, ¿ø·¡ ½Ã°£
-	int Snake_length, MAX_Snake_length, Snake_direction, Snake_direction_O, Snake_speed;	//¹ì ±æÀÌ, ¹ì ÃÖ´ë ±æÀÌ, ¹ì ¹æÇâ, ¹ì Àú¹ø ¹æÇâ, ¹ìÀÇ ¼Óµµ
-	int Apple_x, Apple_y;																	//»ç°ú ÁÂÇ¥
-	BOOL Is_Apple_exist;																	//»ç°úÀÇ Á¸Àç ¿©ºÎ
-	BOOL Is_Game_move, Is_Pause_stop;														//°ÔÀÓÀÇ Áö¼Ó ¿©ºÎ, °ÔÀÓÀÇ ÀÏ½ÃÁ¤Áö ¿©ºÎ, ÀÏ½ÃÁ¤½Ã Á¾·á½Ã
+	int Start_time, Timer, Time_O;															//ï¿½Î°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½, ï¿½ï¿½ï¿½İ±ï¿½ï¿½ï¿½ ï¿½å¸¥ ï¿½Ã°ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½
+	int Snake_length, MAX_Snake_length, Snake_direction, Snake_direction_O, Snake_speed;	//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½Óµï¿½
+	int Apple_x, Apple_y;																	//ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥
+	BOOL Is_Apple_exist;																	//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	BOOL Is_Game_move, Is_Pause_stop;														//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	int key; //Å°º¸µå ÀÔ·Â º¯¼ö
+	int key; //Å°ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-	while (Is_Game) { //°ÔÀÓÀ» °è¼Ó ÇÑ´Ù°í ÇÏ¸é
+	while (Is_Game) { //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ñ´Ù°ï¿½ ï¿½Ï¸ï¿½
 
-		CursorView(0);					//Ä¿¼­ °¡¸®±â
-		srand((int)time(NULL));			//randÇÔ¼ö ÃÊ±âÈ­
+		CursorView(0);					//Ä¿ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		srand((int)time(NULL));			//randï¿½Ô¼ï¿½ ï¿½Ê±ï¿½È­
 
 		Start_time = Timer = Time_O = Snake_length = Snake_speed = 0;
 		Difficulty_num = 1;
 		MAX_Snake_length = 3;
-		Is_Apple_exist = Is_Pause_stop = FALSE;				//½Ï ´Ù ÃÊ±âÈ­
-		Snake_direction = East;							//¹ì ¸Ó¸®¸¦ µ¿ÂÊÀ¸·Î ¸ÂÃçÁÜ
+		Is_Apple_exist = Is_Pause_stop = FALSE;				//ï¿½ï¿½ ï¿½ï¿½ ï¿½Ê±ï¿½È­
+		Snake_direction = East;							//ï¿½ï¿½ ï¿½Ó¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-		system("cls");					//È­¸é ºñ¿ì°í
-		Map_print();					//´Ù½Ã ³Ö¾îÁÜ
+		system("cls");					//È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		Map_print();					//ï¿½Ù½ï¿½ ï¿½Ö¾ï¿½ï¿½ï¿½
 
 
 		for (x = 1; x <= 5; x++) {
@@ -123,123 +138,123 @@ int main() {
 			printf("%s\t(%4dms )", Difficulty_Script[x], Difficulty_speed[x]);
 		}
 
-		if (Difficulty_Secret == 11) {												//½ÃÅ©¸´ Á¶°ÇÀ» ÃæÁ·Çß´Ù¸é
-			gotoxy(10, 16);															//¾ÆÁÖ ¾î·Á¿ò ¹ØÀ¸·Î °¡¼­
-			Text_color(0x000C);														//»¡°­»öÀ¸·Î Ä¥ÇØÁÜ
-			printf("%s\t(%4dms )", Difficulty_Script[6], Difficulty_speed[6]);		//Áö¿Á±ŞÀÔ´Ï´Ù ¿©·¯ºĞ
-			Text_color(0x0007);														//´Ù½Ã ÇÏ¾á»öÀ¸·Î ¹Ù²ãÁÜ
+		if (Difficulty_Secret == 11) {												//ï¿½ï¿½Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ß´Ù¸ï¿½
+			gotoxy(10, 16);															//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+			Text_color(0x000C);														//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ä¥ï¿½ï¿½ï¿½ï¿½
+			printf("%s\t(%4dms )", Difficulty_Script[6], Difficulty_speed[6]);		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			Text_color(0x0007);														//ï¿½Ù½ï¿½ ï¿½Ï¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù²ï¿½ï¿½ï¿½
 		}
 
-		Is_Ingame = Is_Game_move = TRUE;	//°ÔÀÓ ½ÃÀÛÇÑ´Ù!!!!
+		Is_Ingame = Is_Game_move = TRUE;	//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½!!!!
 
-		system("cls");					//³­ÀÌµµ Ã¢ Á¦°Å
-		Map_print();					//´Ù½Ã ÀÌ»Ú°Ô ÇÁ¸°Æ®
+		system("cls");					//ï¿½ï¿½ï¿½Ìµï¿½ Ã¢ ï¿½ï¿½ï¿½ï¿½
+		Map_print();					//ï¿½Ù½ï¿½ ï¿½Ì»Ú°ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®
 
-		Start_time = clock();			//½ÃÀÛ½Ã°£
-		Snake_x[0] = Snake_y[0] = 9;	//½ÃÀÛ À§Ä¡
+		Start_time = clock();			//ï¿½ï¿½ï¿½Û½Ã°ï¿½
+		Snake_x[0] = Snake_y[0] = 9;	//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡
 		gotoxy(18, 9);
-		Text_color(0x002F);				//¹ì ¸Ó¸® Ãâ·Â
+		Text_color(0x002F);				//ï¿½ï¿½ ï¿½Ó¸ï¿½ ï¿½ï¿½ï¿½
 		Snake_print(0);
 		Text_color(0x0007);
-		Snake_length++;					//¸Ó¸® ³ª¿ÔÀ¸´Ï ±æÀÌ 1µÊ
+		Snake_length++;					//ï¿½Ó¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½
 
 		while (Is_Ingame) {
-			Timer = (int)((clock() - Start_time) / Snake_speed); //´ÜÀ§ ½Ã°£À» Àé´Ù
+			Timer = (int)((clock() - Start_time) / Snake_speed); //ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 
-			if (Timer != Time_O && Is_Game_move) { //½Ã°£ÀÌ Áö³ª¸é
+			if (Timer != Time_O && Is_Game_move) { //ï¿½Ã°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 				switch (Snake_direction) {
-				case East: //µ¿ÀÇ ¹æÇâÀ¸·Î ÁÂÇ¥¸¦ ¿òÁ÷ÀÓ (½ÃÀÛ½Ã ±âº»À¸·Î ¸ÂÃçÁ®ÀÖÀ½)
+				case East: //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½Û½ï¿½ ï¿½âº»ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 					Snake_x[Snake_length] = Snake_x[Snake_length - 1] + 1;
 					Snake_y[Snake_length] = Snake_y[Snake_length - 1];
 					Snake_direction_O = East;
 					break;
-				case West: //¼­
+				case West: //ï¿½ï¿½
 					Snake_x[Snake_length] = Snake_x[Snake_length - 1] - 1;
 					Snake_y[Snake_length] = Snake_y[Snake_length - 1];
 					Snake_direction_O = West;
 					break;
-				case South: //³²
+				case South: //ï¿½ï¿½
 					Snake_x[Snake_length] = Snake_x[Snake_length - 1];
 					Snake_y[Snake_length] = Snake_y[Snake_length - 1] + 1;
 					Snake_direction_O = South;
 					break;
-				case North: //ºÏ
+				case North: //ï¿½ï¿½
 					Snake_x[Snake_length] = Snake_x[Snake_length - 1];
 					Snake_y[Snake_length] = Snake_y[Snake_length - 1] - 1;
 					Snake_direction_O = North;
 					break;
 				}
 
-				switch (Map[Snake_y[Snake_length]][Snake_x[Snake_length]]) { // ¸Ó¸®°¡ ¿Å°ÜÁú Ä­ÀÌ
-				case Wall:										//º®ÀÌ¸é
-					if (!Is_Mode_Debug) Is_Ingame = FALSE;				//µğ¹ö±× ¸ğµå°¡ ¾Æ´Ò ½Ã °ÔÀÓ ²ı
+				switch (Map[Snake_y[Snake_length]][Snake_x[Snake_length]]) { // ï¿½Ó¸ï¿½ï¿½ï¿½ ï¿½Å°ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½
+				case Wall:										//ï¿½ï¿½ï¿½Ì¸ï¿½
+					if (!Is_Mode_Debug) Is_Ingame = FALSE;				//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½å°¡ ï¿½Æ´ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 					break;
 
-				case Apple:										//»ç°ú¸é
-					MAX_Snake_length++;								//ÇÑ°è ±æÀÌ¸¦ ´Ã·ÁÁÖ°í
+				case Apple:										//ï¿½ï¿½ï¿½ï¿½ï¿½
+					MAX_Snake_length++;								//ï¿½Ñ°ï¿½ ï¿½ï¿½ï¿½Ì¸ï¿½ ï¿½Ã·ï¿½ï¿½Ö°ï¿½
 					if (MAX_Snake_length == 324) Is_Ingame = FALSE;
-					Is_Apple_exist = 0;								//»ç°ú°¡ ¾ø´Ù°í ¾Ë·ÁÁØ´Ù
-																	//break°¡ ¾ø´Â ÀÌÀ¯´Â »ç°ú ¸Ô°í ¹Ø¿¡ ÇÔ¼ö ½ÇÇàÇÏ¶ó°í
+					Is_Apple_exist = 0;								//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ù°ï¿½ ï¿½Ë·ï¿½ï¿½Ø´ï¿½
+																	//breakï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ô°ï¿½ ï¿½Ø¿ï¿½ ï¿½Ô¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¶ï¿½ï¿½
 
-				case Snake:										//¹ìÀÌ¸é
-					if (Is_Apple_exist) {							//»ç°ú°¡ Á¸ÀçÇÏ¸é == case AppleÀ» Áö³ªÁö ¾Ê¾ÒÀ¸¸é
-						if (!Is_Mode_Debug) {						//µğ¹ö±× ¸ğµå°¡ ¾Æ´Ñµ¥
-							if (!((Snake_x[0] == Snake_x[Snake_length]) && (Snake_y[0] == Snake_y[Snake_length]))) Is_Ingame = FALSE; break;	//²¿¸®µµ ¾Æ´Ï¸é °ÔÀÓ ³¡
+				case Snake:										//ï¿½ï¿½ï¿½Ì¸ï¿½
+					if (Is_Apple_exist) {							//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ == case Appleï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½
+						if (!Is_Mode_Debug) {						//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½å°¡ ï¿½Æ´Ñµï¿½
+							if (!((Snake_x[0] == Snake_x[Snake_length]) && (Snake_y[0] == Snake_y[Snake_length]))) Is_Ingame = FALSE; break;	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Æ´Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 						}
-						else if (!Is_Mode_Noclip) break;			//³ëÅ¬¸³ ¸ğµå¸é ºó °ø°£ Ãë±ŞÇØÁÜ
+						else if (!Is_Mode_Noclip) break;			//ï¿½ï¿½Å¬ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 					}
 
-				case 0:											//ºó °ø°£ÀÌ¸é
-					Snake_length++;									//¸ö ±æÀÌ++
-					if (Snake_length > MAX_Snake_length) {			//¸ö ±æÀÌ°¡ ÃÖ´ë¸¦ ³ÑÀ¸¸é
-						Object_move(Snake_x[0], Snake_y[0], 0);			//ÀÏ´Ü ¸¶Áö¸· Ä­À» Áö¿öÁÜ
+				case 0:											//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì¸ï¿½
+					Snake_length++;									//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½++
+					if (Snake_length > MAX_Snake_length) {			//ï¿½ï¿½ ï¿½ï¿½ï¿½Ì°ï¿½ ï¿½Ö´ë¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+						Object_move(Snake_x[0], Snake_y[0], 0);			//ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-						for (x = 0; x < Snake_length; x++) {			//ÇÑ Ä­¾¿ ÁÂÇ¥¸¦ ¿Å°ÜÁØ´Ù
+						for (x = 0; x < Snake_length; x++) {			//ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½Å°ï¿½ï¿½Ø´ï¿½
 							Snake_x[x] = Snake_x[x + 1];
 							Snake_y[x] = Snake_y[x + 1];
 						}
 
-						Snake_x[MAX_Snake_length] = Snake_y[MAX_Snake_length] = 0; //±×·³ ¸¶Áö¸·(m¹øÂ°¶ó ÇÏ¸é)ÀÌ¶û m-1ÀÌ¶û °ãÄ¡´Ï±î ¸¶Áö¸·À» Áö¿öÁÜ
-						Snake_length--;								 //ÃÖ´ë ±æÀÌ·Î µ¹·ÁÁØ´Ù
+						Snake_x[MAX_Snake_length] = Snake_y[MAX_Snake_length] = 0; //ï¿½×·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(mï¿½ï¿½Â°ï¿½ï¿½ ï¿½Ï¸ï¿½)ï¿½Ì¶ï¿½ m-1ï¿½Ì¶ï¿½ ï¿½ï¿½Ä¡ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+						Snake_length--;								 //ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½Ì·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½
 					}
-					Text_color(0x0027);										//¸öÅëÀº ÃÊ·Ï¹è°æ¿¡ Èò»ö¼±
-					for (x = 0; x < Snake_length - 1; x++) Snake_print(x);	//¹ì ¸ğ¾ç¿¡ ¸Â°Ô ´Ù½Ã ÇÁ¸°Æ® ÇØÁØ´Ù
-					Text_color(0x002F);										//¾ó±¼Àº ÃÊ·Ï¹è°æ¿¡ ¹àÀº Èò»ö ¼±
-					Snake_print(Snake_length - 1);							//¾ó±¼µµ ÇÁ¸°Æ® ÇØÁÜ
-					Text_color(0x0007);										//»ö ´Ù½Ã Èò»öÀ¸·Î
+					Text_color(0x0027);										//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê·Ï¹ï¿½æ¿¡ ï¿½ï¿½ï¿½ï¿½ï¿½
+					for (x = 0; x < Snake_length - 1; x++) Snake_print(x);	//ï¿½ï¿½ ï¿½ï¿½ç¿¡ ï¿½Â°ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½Ø´ï¿½
+					Text_color(0x002F);										//ï¿½ï¿½ï¿½ï¿½ ï¿½Ê·Ï¹ï¿½æ¿¡ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½
+					Snake_print(Snake_length - 1);							//ï¿½ó±¼µï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½
+					Text_color(0x0007);										//ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 					break;
 				}
-				Time_O = Timer; //½Ã°£ ÃÊ±âÈ­
+				Time_O = Timer; //ï¿½Ã°ï¿½ ï¿½Ê±ï¿½È­
 			}
 
-			if (!Is_Apple_exist && MAX_Snake_length != 324) {		//»ç°ú°¡ ¸Ê¿¡ ¾ø°í ÃÖ´ë ±æÀÌ°¡ ¾Æ´Ï¸é
+			if (!Is_Apple_exist && MAX_Snake_length != 324) {		//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½Ì°ï¿½ ï¿½Æ´Ï¸ï¿½
 				do {
 					Apple_x = (rand() % 18) + 1;
 					Apple_y = (rand() % 18) + 1;
-				} while (Map[Apple_y][Apple_x] != 0);				//·£´ıÀ¸·Î »ÌÀº ÁÂÇ¥°¡ ºóÄ­ÀÎÁö È®ÀÎ ÈÄ
+				} while (Map[Apple_y][Apple_x] != 0);				//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½Ä­ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ ï¿½ï¿½
 
-				Object_move(Apple_x, Apple_y, Apple);				//»ç°ú ÇÁ¸°Æ® ÇØÁØ ÈÄ
-				Is_Apple_exist = TRUE;								//±âµÕ µÚ¿¡ »ç°ú ÀÖ´Ù°í ÇØÁØ´Ù
+				Object_move(Apple_x, Apple_y, Apple);				//ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
+				Is_Apple_exist = TRUE;								//ï¿½ï¿½ï¿½ ï¿½Ú¿ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´Ù°ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½
 			}
 
-			if (_kbhit()) {						//Å°º¸µå ÀÔ·ÂÀÌ µé¾î¿À¸é
-				key = _getch();						//Å°¸¦ ¹Ş°í
+			if (_kbhit()) {						//Å°ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+				key = _getch();						//Å°ï¿½ï¿½ ï¿½Ş°ï¿½
 
-				switch (key) {						//¹İ´ë¹æÇâÀ¸·Î °¡´Â°Ô ¾Æ´Ï¸é Å°¿¡ µû¶ó ¹æÇâÀ» ¹Ù²ãÁØ´Ù
+				switch (key) {						//ï¿½İ´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Â°ï¿½ ï¿½Æ´Ï¸ï¿½ Å°ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù²ï¿½ï¿½Ø´ï¿½
 				case 77: if (Snake_direction_O != West && Is_Game_move) Snake_direction = East; break;
 				case 75: if (Snake_direction_O != East && Is_Game_move) Snake_direction = West; break;
 				case 80: if (Snake_direction_O != North && Is_Game_move) Snake_direction = South; break;
 				case 72: if (Snake_direction_O != South && Is_Game_move) Snake_direction = North; break;
 
-				case 13: Is_Game_move = FALSE; break;							//¿£ÅÍ¸¦ ÀÔ·Â¹ŞÀ¸¸é °ÔÀÓÀ» Àá½Ã ¸ØÃá´Ù
-				case 110:													//nÀ» ´©¸£¸é
-					if (Is_Mode_Debug) Is_Mode_Noclip = 1 - Is_Mode_Noclip;	//µğ¹ö±× ¸ğµå¶ó¸é ³ëÅ¬¸³ ¸ğµå¸¦ Á¶Á¤ °¡´É
-					Debug_Show();											//³ëÅ¬¸³ ¸ğµçÁö Ã¼Å©ÇØÁÜ
+				case 13: Is_Game_move = FALSE; break;							//ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½Ô·Â¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
+				case 110:													//nï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+					if (Is_Mode_Debug) Is_Mode_Noclip = 1 - Is_Mode_Noclip;	//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¬ï¿½ï¿½ ï¿½ï¿½å¸¦ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+					Debug_Show();											//ï¿½ï¿½Å¬ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¼Å©ï¿½ï¿½ï¿½ï¿½
 					break;
 				}
 
-				if (Is_Game_move == FALSE) {		//°ÔÀÓÀÌ ÀÏ½ÃÁ¤ÁöµÇ¸é ´ÙÀ½Ã³·³ Ãâ·ÂÇØÁÜ
+				if (Is_Game_move == FALSE) {		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¸ï¿½ ï¿½ï¿½ï¿½ï¿½Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 					gotoxy(54, 9);
 					printf("P A U S E");
 					gotoxy(45, 11);
@@ -247,13 +262,13 @@ int main() {
 					gotoxy(45, 12);
 					printf(" [Enter] \t\t  [Space]");
 
-					if (_kbhit) {			//Å°º¸µå ÀÔ·ÂÀ» ¹Ş°í
+					if (_kbhit) {			//Å°ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½Ş°ï¿½
 						key = _getch();
 
 						switch (key) {
-						case 13:						//¿£ÅÍ¸¦ ¹ŞÀ¸¸é
-							Is_Game_move = TRUE;			//°ÔÀÓ °è¼Ó ÇÒ°ÅÀÓ
-							gotoxy(54, 9);				//ÀÏ½ÃÁ¤ÁöÀÏ¶§ Ãâ·Â‰ç´ø°Å Áö¿öÁÜ
+						case 13:						//ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+							Is_Game_move = TRUE;			//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ò°ï¿½ï¿½ï¿½
+							gotoxy(54, 9);				//ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¶ï¿½ ï¿½ï¿½Â‰ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 							printf("                     ");
 							gotoxy(45, 11);
 							printf("                                ");
@@ -261,10 +276,10 @@ int main() {
 							printf("                            ");
 							break;
 
-						case 32:						//½ºÆäÀÌ½º¸é
-							Is_Ingame = FALSE;				//°ÔÀÓ ¾ÈÇÒ°ÅÀÓ ¤Ñ¤Ñ ½º³×ÀÌÅ© ²¨¶ó
-							Is_Pause_stop = TRUE;			//¹Ù·Î ²¨¶ó
-							gotoxy(54, 9);					//ÀÏ½ÃÁ¤ÁöÀÏ¶§ Ãâ·Â‰ç´ø°Å Áö¿öÁÜ
+						case 32:						//ï¿½ï¿½ï¿½ï¿½ï¿½Ì½ï¿½ï¿½ï¿½
+							Is_Ingame = FALSE;				//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ò°ï¿½ï¿½ï¿½ ï¿½Ñ¤ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å© ï¿½ï¿½ï¿½ï¿½
+							Is_Pause_stop = TRUE;			//ï¿½Ù·ï¿½ ï¿½ï¿½ï¿½ï¿½
+							gotoxy(54, 9);					//ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¶ï¿½ ï¿½ï¿½Â‰ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 							printf("                     ");
 							gotoxy(45, 11);
 							printf("                                ");
@@ -276,72 +291,72 @@ int main() {
 				}
 			}
 
-			gotoxy(23, 21);														//¹ØÀ¸·Î °¡¼­
-			printf("Á¡¼ö :    %4d Á¡\n", Snake_length*Difficulty_num);			//Á¡¼ö ÇÁ¸°Æ®ÇØÁÜ
+			gotoxy(23, 21);														//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+			printf("ï¿½ï¿½ï¿½ï¿½ :    %4d ï¿½ï¿½\n", Snake_length*Difficulty_num);			//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½
 
-			if (Is_Mode_Debug) {												//µğ¹ö±× ÇÒ ¶§ Å×½ºÆ® ÄÚµåÀÓ
-				printf("MAX_Snake_length = %d\n", MAX_Snake_length);				//¹ì ÃÖ´ë±æÀÌ
-				printf("Speed = %d (ms)\n", Difficulty_speed[Difficulty_num]);		//¼Óµµ
-				printf("Snake_direction = %d\n", Snake_direction);					//¹ì ¸Ó¸® ¹æÇâ
-				printf("timer = %d", Timer);										//´ÜÀ§½Ã°£
+			if (Is_Mode_Debug) {												//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½×½ï¿½Æ® ï¿½Úµï¿½ï¿½ï¿½
+				printf("MAX_Snake_length = %d\n", MAX_Snake_length);				//ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ï¿½
+				printf("Speed = %d (ms)\n", Difficulty_speed[Difficulty_num]);		//ï¿½Óµï¿½
+				printf("Snake_direction = %d\n", Snake_direction);					//ï¿½ï¿½ ï¿½Ó¸ï¿½ ï¿½ï¿½ï¿½ï¿½
+				printf("timer = %d", Timer);										//ï¿½ï¿½ï¿½ï¿½ï¿½Ã°ï¿½
 
 				for (x = 0; x < 20; x++) {
 					for (y = 0; y < 20; y++) {
-						gotoxy(45 + 2 * x, y);										//°ÔÀÓ È­¸é ¿·¿¡
-						printf("%d ", Map[y][x]);									//±×¸²ÀÌ ¾Æ´Ï¶ó ¸ÊÀÇ °ª ÀÚÃ¼¸¦ Ãâ·Â
+						gotoxy(45 + 2 * x, y);										//ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+						printf("%d ", Map[y][x]);									//ï¿½×¸ï¿½ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½
 					}
 				}
 			}
 		}
 
-		//Is_IngameÀÌ 0ÀÌ¸é (== °ÔÀÓÀÌ ³¡³µÀ¸¸é)
-		fflush(stdin);	//Áö±İ±îÁö ÀÔ·Â¹ŞÀº ¹öÆÛ ´Ù Áö¿î´Ù
+		//Is_Ingameï¿½ï¿½ 0ï¿½Ì¸ï¿½ (== ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
+		fflush(stdin);	//ï¿½ï¿½ï¿½İ±ï¿½ï¿½ï¿½ ï¿½Ô·Â¹ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
 
-		if (Is_Pause_stop) {			//ÀÏ½ÃÁ¤ÁöÇØ¼­ ³¡³­ °ÍÀÌ¶ó¸é
-			Snake_clear(Snake_length);		//¹ìÀ» ÃÊ±âÈ­
-			Map[Apple_y][Apple_x] = 0;		//¸Êµµ ÃÊ±âÈ­
+		if (Is_Pause_stop) {			//ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¶ï¿½ï¿½
+			Snake_clear(Snake_length);		//ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
+			Map[Apple_y][Apple_x] = 0;		//ï¿½Êµï¿½ ï¿½Ê±ï¿½È­
 			Apple_x = Apple_y = 0;
 		}
 
-		else{							//Á¤»óÀûÀ¸·Î Á¾·áµÈ °ÍÀÌ¸é
-			gotoxy(45, 5);																		//¿·¿¡´Ù°¡
-			char Gameover[12] = { 'G', 'A', 'M', 'E', ' ', 'O', 'V', 'E', 'R','.','.','.' };	//°ÔÀÓ ¿À¹ö ±Û¾¾
+		else{							//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¸ï¿½
+			gotoxy(45, 5);																		//ï¿½ï¿½ï¿½ï¿½ï¿½Ù°ï¿½
+			char Gameover[12] = { 'G', 'A', 'M', 'E', ' ', 'O', 'V', 'E', 'R','.','.','.' };	//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Û¾ï¿½
 			for (x = 0; x < 12; x++) {
-				printf("%c ", Gameover[x]);														//gameover ±Û¾¾¸¦ Â÷·Ê´ë·Î ¶ç¿öÁÜ
-				Sleep(100);																		//Àá±ñ ¸ØÃã
+				printf("%c ", Gameover[x]);														//gameover ï¿½Û¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ê´ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
+				Sleep(100);																		//ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 			}
 
-			//°ÔÀÓ ¿À¹ö È­¸éÀ» Ãâ·ÂÇØÁØ´Ù
+			//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½
 			gotoxy(45, 9);
-			printf("´Ù½Ã ÇÃ·¹ÀÌ ÇÏ½Ã°Ú½À´Ï±î?");
+			printf("ï¿½Ù½ï¿½ ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½Ï½Ã°Ú½ï¿½ï¿½Ï±ï¿½?");
 			gotoxy(45, 11);
 			printf("  Yes\t\t  No");
 			gotoxy(45, 12);
 			printf("[Enter]\t\t[Space]");
 
-			if ((Difficulty_num < 6) && (Snake_length*Difficulty_num  >= 100)) { //Áö¿Á±Ş ¹Ì¸¸ ³­ÀÌµµ¿¡¼­ 100Á¡ ÀÌ»ó½Ã
+			if ((Difficulty_num < 6) && (Snake_length*Difficulty_num  >= 100)) { //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ 100ï¿½ï¿½ ï¿½Ì»ï¿½ï¿½
 				gotoxy(45, 10);
-				Text_color(0x0004);							//»¡°­
-				printf("³­ÀÌµµ ¼±ÅÃ Ã¢ + ¡é¡¿10 = ...?");	//Áö¿Á±Ş ÇØ±İ ÈùÆ®¸¦ ¾Ë·ÁÁØ´Ù
-				Text_color(0x0007);							//ÇÏ¾ç
+				Text_color(0x0004);							//ï¿½ï¿½ï¿½ï¿½
+				printf("ï¿½ï¿½ï¿½Ìµï¿½ ï¿½ï¿½ï¿½ï¿½ Ã¢ + ï¿½é¡¿10 = ...?");	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ø±ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½Ë·ï¿½ï¿½Ø´ï¿½
+				Text_color(0x0007);							//ï¿½Ï¾ï¿½
 			}
 
-			BOOL Is_Game_question = TRUE;	//ÀÌ È­¸éÀ» À¯Áö½ÃÅ³ º¯¼ö
-			while (Is_Game_question) {		// Å° ´©¸£±â Àü±îÁö ¹«ÇÑ ·çÇÁ,
+			BOOL Is_Game_question = TRUE;	//ï¿½ï¿½ È­ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å³ ï¿½ï¿½ï¿½ï¿½
+			while (Is_Game_question) {		// Å° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½,
 				key = _getch();
 
 				switch (key) {
-				case 32:						//½ºÆäÀÌ½º ´©¸£¸é
-					gotoxy(0, 23);					//°ÔÀÓ È­¸é ¹ØÀ¸·Î °¡¼­ (¸Ç ¸¶Áö¸· Á¾·á ¹®±¸¸¦ ¹Ø¿¡ ¶ß°Ô ÇÏ±â À§ÇÔ)
-					Is_Game = FALSE;					//ÀÀ °ÔÀÓ ²¨¶ó
-					Is_Game_question = FALSE;			//ÀÌ È­¸éµµ ²¨¶ó
+				case 32:						//ï¿½ï¿½ï¿½ï¿½ï¿½Ì½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+					gotoxy(0, 23);					//ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ø¿ï¿½ ï¿½ß°ï¿½ ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½ï¿½)
+					Is_Game = FALSE;					//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+					Is_Game_question = FALSE;			//ï¿½ï¿½ È­ï¿½éµµ ï¿½ï¿½ï¿½ï¿½
 					break;
 
-				case 13:						//¿£ÅÍ ´©¸£¸é
-					Snake_clear(Snake_length);		//¹ìÀ» ÃÊ±âÈ­
-					Map[Apple_y][Apple_x] = 0;		//¸Êµµ ÃÊ±âÈ­
-					Apple_x = Apple_y = 0;			//»ç°ú ÁÂÇ¥µµ ÃÊ±âÈ­
-					Is_Game_question = FALSE;		//ÀÌ È­¸éµµ ²¨¶ó
+				case 13:						//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+					Snake_clear(Snake_length);		//ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
+					Map[Apple_y][Apple_x] = 0;		//ï¿½Êµï¿½ ï¿½Ê±ï¿½È­
+					Apple_x = Apple_y = 0;			//ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½Ê±ï¿½È­
+					Is_Game_question = FALSE;		//ï¿½ï¿½ È­ï¿½éµµ ï¿½ï¿½ï¿½ï¿½
 					break;
 				}
 			}
@@ -349,13 +364,13 @@ int main() {
 	}
 }
 
-//ÁÂÇ¥ ±¸Çö ÇÔ¼ö
+//ï¿½ï¿½Ç¥ ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½
 void gotoxy(int x, int y) {
 	COORD Pos = { x, y };
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), Pos);
 }
 
-//Ä¿¼­ ¾È±ôºıÀÌ°Ô ÇÏ´Â ÇÔ¼ö
+//Ä¿ï¿½ï¿½ ï¿½È±ï¿½ï¿½ï¿½ï¿½Ì°ï¿½ ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½
 void CursorView(int show) {
 	CONSOLE_CURSOR_INFO ConsoleCursor;
 	ConsoleCursor.bVisible = show;
@@ -363,16 +378,16 @@ void CursorView(int show) {
 	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ConsoleCursor);
 }
 
-//¹ì ÃÊ±âÈ­ ÇÏ´Â ÇÔ¼ö
+//ï¿½ï¿½ ï¿½Ê±ï¿½È­ ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½
 void Snake_clear(int n) {
 	for (x = 0; x < n; x++) {
-		Map[Snake_y[x]][Snake_x[x]] = 0;	//¸ÊÀ» ÃÊ±âÈ­ÇÔ
-		Snake_x[x] = Snake_y[x] = 0;		//¹ì ¹è¿­µµ ÃÊ±âÈ­ÇÔ
+		Map[Snake_y[x]][Snake_x[x]] = 0;	//ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½ï¿½
+		Snake_x[x] = Snake_y[x] = 0;		//ï¿½ï¿½ ï¿½è¿­ï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½ï¿½
 	}
-	Snake_x[n] = Snake_y[n] = 0;			//¸Ç ¸¶Áö¸· ¹ìµµ ÃÊ±âÈ­ÇØÁÜ
+	Snake_x[n] = Snake_y[n] = 0;			//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ìµµ ï¿½Ê±ï¿½È­ï¿½ï¿½ï¿½ï¿½
 }
 
-//¸Ê ÇÁ¸°Æ® ÇØÁÖ´Â ÇÔ¼ö
+//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½Ö´ï¿½ ï¿½Ô¼ï¿½
 void Map_print() {
 	for (x = 0; x < 20; x++) {
 		for (y = 0; y < 20; y++) {
@@ -386,30 +401,30 @@ void Map_print() {
 }
 
 void Debug_Show() {
-	if (Is_Mode_Debug) {	//µğ¹ö±× ¸ğµåÀÌ¸é
-		gotoxy(0, 0);			//È­¸é ÁÂ»ó´Ü¿¡
-		Text_color(0x0003);		//ÆÄ¶û
-		printf("¨Ğ");			//µğ¹ö±×!
-		Text_color(0x0007);		//ÇÏ¾ç
+	if (Is_Mode_Debug) {	//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ì¸ï¿½
+		gotoxy(0, 0);			//È­ï¿½ï¿½ ï¿½Â»ï¿½Ü¿ï¿½
+		Text_color(0x0003);		//ï¿½Ä¶ï¿½
+		printf("ï¿½ï¿½");			//ï¿½ï¿½ï¿½ï¿½ï¿½!
+		Text_color(0x0007);		//ï¿½Ï¾ï¿½
 	}
 	else {
-		gotoxy(0, 0);			//È­¸é ÁÂ»ó´Ü¿¡
-		printf("¢Ì");			//ÀÀ ÀÏ¹İ ÇÃ·¹ÀÌ¾ß~
+		gotoxy(0, 0);			//È­ï¿½ï¿½ ï¿½Â»ï¿½Ü¿ï¿½
+		printf("ï¿½ï¿½");			//ï¿½ï¿½ ï¿½Ï¹ï¿½ ï¿½Ã·ï¿½ï¿½Ì¾ï¿½~
 	}
 
-	if (!(!Is_Mode_Debug || Is_Ingame)) {	//µğ¹ö±× ¸ğµåÀÌ¸é¼­ ¸Ş´ºÀÏ¶§
-		gotoxy(45, 3);						//¼³¸í¹® Ãâ·Â
-		printf("****µğ¹ö±×  ¸ğµå****");
+	if (!(!Is_Mode_Debug || Is_Ingame)) {	//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ì¸é¼­ ï¿½Ş´ï¿½ï¿½Ï¶ï¿½
+		gotoxy(45, 3);						//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+		printf("****ï¿½ï¿½ï¿½ï¿½ï¿½  ï¿½ï¿½ï¿½****");
 		gotoxy(45, 5);
-		printf("[d] µğ¹ö±× ¸ğµå Á¾·á");
+		printf("[d] ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½");
 		gotoxy(45, 6);
-		printf("[n] ³ëÅ¬¸³ ¸ğµå ½ÇÇà");
+		printf("[n] ï¿½ï¿½Å¬ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½");
 		gotoxy(45, 7);
-		printf("[s] ¼Óµµ ÀÓÀÇ·Î ÀÔ·Â");
+		printf("[s] ï¿½Óµï¿½ ï¿½ï¿½ï¿½Ç·ï¿½ ï¿½Ô·ï¿½");
 	}
 
-	else {									//¾Æ´Ï¸é
-		gotoxy(45, 3);						//´Ù Áö¿ö
+	else {									//ï¿½Æ´Ï¸ï¿½
+		gotoxy(45, 3);						//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		printf("                    ");
 		gotoxy(45, 5);
 		printf("                    ");
@@ -422,32 +437,32 @@ void Debug_Show() {
 	if (Is_Mode_Noclip) {
 		gotoxy(38, 0);
 		Text_color(0x0006);
-		printf("¨Ú");
+		printf("ï¿½ï¿½");
 		Text_color(0x0007);
 	}
 	else {
 		gotoxy(38, 0);
-		printf("¢Ì");
+		printf("ï¿½ï¿½");
 	}
 
 	if (!(!Is_Mode_Noclip || Is_Ingame)) {
 		gotoxy(61, 6);
-		printf("Á¾·á");
+		printf("ï¿½ï¿½ï¿½ï¿½");
 	}
 	else if (!(!Is_Mode_Debug || Is_Ingame)) {
 			gotoxy(61, 6);
-			printf("½ÇÇà");
+			printf("ï¿½ï¿½ï¿½ï¿½");
 	}
 }
 
-//ÇÑ Ä­¸¸ ¿ÀºêÁ§Æ®¸¦ ¹Ù²ãÁÖ´Â ÇÔ¼ö
+//ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½Ù²ï¿½ï¿½Ö´ï¿½ ï¿½Ô¼ï¿½
 void Object_move(int x, int y, int a) {
 	Map[y][x] = a;
 	gotoxy(2 * x, y);
 	Object_print(a);
 }
 
-//¿ÀºêÁ§Æ®¸¦ Ãâ·ÂÇØÁÖ´Â ÇÔ¼ö
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ ï¿½Ô¼ï¿½
 void Object_print(int a) {
 	switch (a) {
 		case 0:
@@ -456,61 +471,61 @@ void Object_print(int a) {
 
 		case Apple:
 			Text_color(0x000C);
-			puts("¡Ü");
+			puts("ï¿½ï¿½");
 			Text_color(0x0007);
 			break;
 
 		case Wall:
-			puts("¢Ì");
+			puts("ï¿½ï¿½");
 			break;
 	}
 }
 
-//Æ¯º° °ü¸®´ë»ó ¹ìÀ» Ãâ·ÂÇØÁÖ´Â ÇÔ¼ö
+//Æ¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ ï¿½Ô¼ï¿½
 void Snake_print(int n) {
-	int Dx_Before, Dy_Before, Dx_After, Dy_After;	//°¢ ºí·°À» ±âÁØÀ¸·Î Àü/ÈÄ ºí·°ÀÇ ÁÂÇ¥ º¯È­
-	BOOL Up, Down, Left, Right;						//°¢ ºí·°À» ±âÁØÀ¸·Î »óÇÏÁÂ¿ì¿¡ ºí·°ÀÌ ÀÖ´ÂÁö Ã¼Å©ÇÏ´Â º¯¼ö
-	Up = Down = Left = Right = FALSE;				//ÀÏ´Ü ÀÌ ºí·°Àº »óÇÏÁÂ¿ì¿¡ ¹ìÀÌ ¾ø½À´Ï´Ù
-	Map[Snake_y[n]][Snake_x[n]] = Snake;			//±×¸®°í ÀÏ´Ü ÀÌ ÁÂÇ¥¿¡´Â ¹ìÀÌ ÀÖ½À´Ï´Ù
+	int Dx_Before, Dy_Before, Dx_After, Dy_After;	//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½/ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ ï¿½ï¿½È­
+	BOOL Up, Down, Left, Right;						//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Â¿ì¿¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ Ã¼Å©ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½
+	Up = Down = Left = Right = FALSE;				//ï¿½Ï´ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Â¿ì¿¡ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½
+	Map[Snake_y[n]][Snake_x[n]] = Snake;			//ï¿½×¸ï¿½ï¿½ï¿½ ï¿½Ï´ï¿½ ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö½ï¿½ï¿½Ï´ï¿½
 
-	if (n != 0) {									//ÀÌ°Ô ²¿¸®°¡ ¾Æ´Ï¶ó¸é
-		Dx_Before = Snake_x[n] - Snake_x[n - 1];		// Dx = 1; Àú¹ø Ä­ÀÌ ¿ŞÂÊ, Dx = -1; Àú¹ø Ä­ÀÌ ¿À¸¥ÂÊ
-		Dy_Before = Snake_y[n] - Snake_y[n - 1];		// Dy = 1; Àú¹ø Ä­ÀÌ ¾Æ·¡ÂÊ, Dy = -1; Àú¹ø Ä­ÀÌ À§ÂÊ
+	if (n != 0) {									//ï¿½Ì°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ï¿½
+		Dx_Before = Snake_x[n] - Snake_x[n - 1];		// Dx = 1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, Dx = -1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		Dy_Before = Snake_y[n] - Snake_y[n - 1];		// Dy = 1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½Æ·ï¿½ï¿½ï¿½, Dy = -1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	}
-	else Dx_Before = Dy_Before = 0;					//²¿¸®¸é ÀÌÀü ¹ìÀÌ ¾ø´Ù°í ¾Ë·ÁÁÜ
+	else Dx_Before = Dy_Before = 0;					//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ù°ï¿½ ï¿½Ë·ï¿½ï¿½ï¿½
 
-	if (Snake_x[n + 1] != 0) {						//ÀÌ°Ô ¸Ó¸®°¡ ¾Æ´Ï¶ó¸é (¸Ó¸® ±æÀÌ ÀÌÈÄ°ªÀÇ ÁÂÇ¥°ªÀº 0À¸·Î ¼³Á¤ÇßÀ¸¹Ç·Î)
-		Dx_After = Snake_x[n] - Snake_x[n + 1];			// Dx = 1; ´ÙÀ½ Ä­ÀÌ ¿ŞÂÊ, Dx = -1; ´ÙÀ½ Ä­ÀÌ ¿À¸¥ÂÊ
-		Dy_After = Snake_y[n] - Snake_y[n + 1];			// Dy = 1; ´ÙÀ½ Ä­ÀÌ ¾Æ·¡ÂÊ, Dy = -1; ´ÙÀ½ Ä­ÀÌ À§ÂÊ
+	if (Snake_x[n + 1] != 0) {						//ï¿½Ì°ï¿½ ï¿½Ó¸ï¿½ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ï¿½ (ï¿½Ó¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ä°ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½)
+		Dx_After = Snake_x[n] - Snake_x[n + 1];			// Dx = 1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, Dx = -1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		Dy_After = Snake_y[n] - Snake_y[n + 1];			// Dy = 1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½Æ·ï¿½ï¿½ï¿½, Dy = -1; ï¿½ï¿½ï¿½ï¿½ Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	}
-	else Dx_After = Dy_After = 0;					//¸Ó¸®¸é ´ÙÀ½ ¹ìÀÌ ¾ø´Ù°í ¾Ë·ÁÁÜ
+	else Dx_After = Dy_After = 0;					//ï¿½Ó¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ù°ï¿½ ï¿½Ë·ï¿½ï¿½ï¿½
 
-	if (Dx_Before == 1 || Dx_After == 1)	Left = TRUE;	//¿ŞÂÊ¿¡ ¹ìÀÌ ÀÖ³Ä??
-	if (Dx_Before == -1 || Dx_After == -1)	Right = TRUE;	//¿À¸¥ÂÊ
-	if (Dy_Before == 1 || Dy_After == 1)	Up = TRUE;		//À§ÂÊ
-	if (Dy_Before == -1 || Dy_After == -1)	Down = TRUE;	//¾Æ·¡ÂÊ
+	if (Dx_Before == 1 || Dx_After == 1)	Left = TRUE;	//ï¿½ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö³ï¿½??
+	if (Dx_Before == -1 || Dx_After == -1)	Right = TRUE;	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	if (Dy_Before == 1 || Dy_After == 1)	Up = TRUE;		//ï¿½ï¿½ï¿½ï¿½
+	if (Dy_Before == -1 || Dy_After == -1)	Down = TRUE;	//ï¿½Æ·ï¿½ï¿½ï¿½
 
-	gotoxy(2 * Snake_x[n], Snake_y[n]);				//¹ì Ä­À¸·Î °¡¼­
+	gotoxy(2 * Snake_x[n], Snake_y[n]);				//ï¿½ï¿½ Ä­ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-	//´ÙÀ½ ¼³¸íºÎÅÍ ¼ıÀÚ´Â Å°ÆĞµå ±âÁØÀÓ (ex (24) = »ó, ÁÂ¿¡ ¹ìÀÌ ÀÖÀ½, (20) == »ó¿¡¸¸ ¹ìÀÌ ÀÖÀ½)
-	if (Up) {							//À§¿¡ ¹ìÀÌ ÀÖÀ½
-		if (Left) puts("¦°");				//¿ŞÂÊ¿¡ ¹ìÀÌ ÀÖÀ½						(24)
-		else if (Right) puts("¦±");			//¿À¸¥ÂÊ¿¡ ¹ìÀÌ ÀÖÀ½					(26)
-		else puts("¦­");					//¾Æ·¡¿¡ ¹ìÀÌ ÀÖ´ø ¾ø´ø »ó°ü¾øÀÌ		(20, 28)
-	}
-
-	else if (Left) {					//¿ŞÂÊ¿¡ ¹ìÀÌ ÀÖÀ½
-		if (Down) puts("¦¯");				//¾Æ·¡ÂÊ¿¡ ¹ìÀÌ ÀÖÀ½					(48)
-		else puts("¦¬");					//¿À¸¥ÂÊ¿¡ ¹ìÀÌ ÀÖ´ø ¾ø´ø »ó°ü¾øÀÌ		(40, 46)
+	//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ú´ï¿½ Å°ï¿½Ğµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ex (24) = ï¿½ï¿½, ï¿½Â¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, (20) == ï¿½ó¿¡¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
+	if (Up) {							//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		if (Left) puts("ï¿½ï¿½");				//ï¿½ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½						(24)
+		else if (Right) puts("ï¿½ï¿½");			//ï¿½ï¿½ï¿½ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½					(26)
+		else puts("ï¿½ï¿½");					//ï¿½Æ·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½		(20, 28)
 	}
 
-	else if (Right) {					//¿À¸¥ÂÊ¿¡ ¹ìÀÌ ÀÖÀ½
-		if (Down) puts("¦®");				//¾Æ·¡ÂÊ¿¡ ¹ìÀÌ ÀÖÀ½					(68)
-		else printf("¦¬");					//ÀÌ¹Ì »óÁÂ¿¡ ¹ìÀÌ ¾øÀ¸¹Ç·Î				(60)
+	else if (Left) {					//ï¿½ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		if (Down) puts("ï¿½ï¿½");				//ï¿½Æ·ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½					(48)
+		else puts("ï¿½ï¿½");					//ï¿½ï¿½ï¿½ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½		(40, 46)
 	}
 
-	else if(Down) printf("¦­");			//ÀÌ¹Ì »óÇÏÁÂ¿¡ ¹ìÀÌ ¾øÀ¸¹Ç·Î				(80)
+	else if (Right) {					//ï¿½ï¿½ï¿½ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		if (Down) puts("ï¿½ï¿½");				//ï¿½Æ·ï¿½ï¿½Ê¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½					(68)
+		else printf("ï¿½ï¿½");					//ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½Â¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½				(60)
+	}
 
-	else printf("¦¬");					//¸Ç Ã³À½ ºí·ÏÀº µ¿ÂÊÀ» ÇâÇÏ¹Ç·Î			(00)
+	else if(Down) printf("ï¿½ï¿½");			//ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Â¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½				(80)
+
+	else printf("ï¿½ï¿½");					//ï¿½ï¿½ Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¹Ç·ï¿½			(00)
 }
 */
