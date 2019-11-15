@@ -4,14 +4,16 @@
 #include <sys/time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 //정의; 맵의 크기 (토의 후 변경 가능)
 #define MAP_SIZE 18
 
 //정의; 블럭의 종류. 편의 상 정의.
-#define SNAKE 0x00A0
-#define APPLE 0x00A1
-#define WALL 0x00A2
+#define EMPTY 0x00A0
+#define SNAKE 0x00A1
+#define APPLE 0x00A2
+#define WALL 0x00A3
 
 //정의; 뱀의 머리 방향. 편의 상 정의.
 #define EAST 0x00B0
@@ -28,122 +30,98 @@ typedef struct Position {
 	int y;
 } Pst;
 
-void timer_handler(int signum){
+//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직일 것.
+void snake_move(int signum){
 	static int count = 0;
 	fprintf(stderr, "test : %d\n", count++);
 }
 
 void snakeGame(int fd[])
-{
-	int map[MAP_SIZE + 2][MAP_SIZE + 2] = { 0 };	//맵을 표현하기 위한 2차원 배열. 벽 때문에 +2
+{	
+	//다음의 구문은 단위 시간마다 Signal을 발생시켜, 뱀을 규칙적으로 움직이게 하기 위한 구조체들을 정의하기 위한 구문이다.
+	///SIGALRM 처리를 위한 구조체.
+	struct sigaction sa;
+	sa.sa_handler = &snake_move;
+	sigaction(SIGALRM, &sa, NULL);
+	
+	///SIGALAM의 interval을 정의하기 위한 구조체.
+	struct itimerval timer;
+	timer.it_value.tv_sec = 0;
+	timer.it_value.tv_usec = 250000;	//처음 1회에 대한 interval
+	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = 250000;	//한 번 실행 이후에 대한 interval
+	setitimer (ITIMER_REAL, &timer, NULL);	//위에서 정의한 시간마다 SIGALRM을 발생시킨다.
+
+	//다음의 구문은 게임에서 사용할 변수들을 정의하기 위한 구문이다.
+	///0. 맵
+	int map[MAP_SIZE + 2][MAP_SIZE + 2] = { EMPTY, };	//맵을 표현하기 위한 2차원 배열. 벽 때문에 +2
 	int x;
 	for (x = 0; x < MAP_SIZE - 1; x++) {
 		map[0][x] = map[x][MAP_SIZE - 1] = map[MAP_SIZE - 1][MAP_SIZE - 1 - x] = map[MAP_SIZE - 1 - x][0] = WALL;	//맵에 벽을 만들어준다.
 	}
 
+	///1. 뱀
 	Pst snake[MAP_SIZE * MAP_SIZE] = { {0,0}, };	//뱀의 머리와 각 몸통의 위치를 저장할 배열.
+	int snakeDirection = EAST;
+	int snakeDirection_OLD = EAST;
+
+	///2. 사과
 	Pst apple = { 0,0 };	//사과의 위치를 저장할 변수.
-
-	//Bool Is_Game = TRUE, Is_Ingame = FALSE;
-	int snakeSpeed = 250; //뱀이 움직일 interval.
-
-	char ch;	//입력 키를 저장하기 위한 변수.
-	struct sigaction sa;
-	sa.sa_handler = &timer_handler;
-	sigaction(SIGALRM, &sa, NULL);
-
-	struct itimerval timer;
-	//처음 1회에 대한 interval
-	timer.it_value.tv_sec = 0;
-	timer.it_value.tv_usec = 250000;
-	//한 번 실행 이후에 대한 interval
-	timer.it_interval.tv_sec = 0;
-	timer.it_interval.tv_usec = 250000;
-
-	/* Start a virtual timer. It counts down whenever this process is executing. */
-	setitimer (ITIMER_REAL, &timer, NULL);
-	printf("timer setting complete.\n");
 	
+	char ch;	//입력 키를 저장하기 위한 변수.
+
 	while (TRUE)
 	{
-		read(fd[0], &ch, 1);	//read info to parent process
+		int readByte;
+		ch = 0;
+		readByte = read(fd[0], &ch, 1);	//부모 프로세스에서 pipe를 통해 키보드 값을 읽어옴
 
-		switch (ch)
-		{
-		case 65:
-			printf("Up!\n");
-			break;
+		if(readByte == 1){	//값을 읽어온 경우에만
+			switch (ch)
+			{
+			case 65:	//위
+				printf("Up!\n");
+				if(snakeDirection_OLD != SOUTH) snakeDirection = NORTH;
+				break;
 
-		case 66:
-			printf("Down\n");
-			break;
+			case 66:	//아래
+				printf("Down\n");
+				if(snakeDirection_OLD != NORTH) snakeDirection = SOUTH;
+				break;
 
-		case 67:
-			printf("Right!\n");
-			break;
+			case 67:	//오른쪽
+				printf("Right!\n");
+				if(snakeDirection_OLD != WEST) snakeDirection = EAST;
+				break;
 
-		case 68:
-			printf("Left!\n");
-			break;
+			case 68:	//왼쪽
+				printf("Left!\n");
+				if(snakeDirection_OLD != EAST) snakeDirection = WEST;
+				break;
+			}
 		}
 	}
 }
 
 /*
-//������ ������ũ ���� ����ǵ� ���������� �ϴ� �ٿ�����, ������, 191109.1947
-//����鼭 ���� �������� ������, ������, 191109.1956
-
-//�Լ� ����
-void gotoxy(int x, int y);
-void CursorView(int show);
-void Snake_clear(int n);
-void Map_print();
-void Debug_Show();
-void Object_move(int x, int y, int a);
-void Object_print(int a);
-void Snake_print(int n);
-
-//���α׷� ��ü�� �����°��� ���� ����, ����� ��� ���ο� ���� ����, ��Ŭ�� ���ο� ���� ����
-BOOL Is_Game = TRUE, Is_Ingame = FALSE, Is_Mode_Debug = FALSE, Is_Mode_Noclip = FALSE;
 
 int main() {
-	int Difficulty_speed[7] = 250,
-	char Difficulty_Script[7][12] = { "�׽�Ʈ ���", "���� ����  ",
-
-	int Start_time, Timer, Time_O;															//�ΰ��� ���� �ð�, ���ݱ��� �帥 �ð�, ���� �ð�
 	int Snake_length, MAX_Snake_length, Snake_direction, Snake_direction_O, Snake_speed;	//�� ����, �� �ִ� ����, �� ����, �� ���� ����, ���� �ӵ�
 	int Apple_x, Apple_y;																	//��� ��ǥ
 	BOOL Is_Apple_exist;																	//����� ���� ����
 	BOOL Is_Game_move, Is_Pause_stop;														//������ ���� ����, ������ �Ͻ����� ����, �Ͻ����� �����
 
-	int key; //Ű���� �Է� ����
-
 	while (Is_Game) { //������ ��� �Ѵٰ� �ϸ�
 
-		CursorView(0);					//Ŀ�� ������
 		srand((int)time(NULL));			//rand�Լ� �ʱ�ȭ
 
 		Start_time = Timer = Time_O = Snake_length = Snake_speed = 0;
-		Difficulty_num = 1;
 		MAX_Snake_length = 3;
 		Is_Apple_exist = Is_Pause_stop = FALSE;				//�� �� �ʱ�ȭ
 		Snake_direction = East;							//�� �Ӹ��� �������� ������
 
 		system("cls");					//ȭ�� ����
 		Map_print();					//�ٽ� �־���
-
-
-		for (x = 1; x <= 5; x++) {
-			gotoxy(10, 4 + 2 * x);
-			printf("%s\t(%4dms )", Difficulty_Script[x], Difficulty_speed[x]);
-		}
-
-		if (Difficulty_Secret == 11) {												//��ũ�� ������ �����ߴٸ�
-			gotoxy(10, 16);															//���� ����� ������ ����
-			Text_color(0x000C);														//���������� ĥ����
-			printf("%s\t(%4dms )", Difficulty_Script[6], Difficulty_speed[6]);		//�������Դϴ� ������
-			Text_color(0x0007);														//�ٽ� �Ͼ������ �ٲ���
-		}
 
 		Is_Ingame = Is_Game_move = TRUE;	//���� �����Ѵ�!!!!
 
@@ -161,6 +139,7 @@ int main() {
 		while (Is_Ingame) {
 			Timer = (int)((clock() - Start_time) / Snake_speed); //���� �ð��� ���
 
+			//여기부터 단위시간마다 뱀이 움직이는 부분인거 같음
 			if (Timer != Time_O && Is_Game_move) { //�ð��� ������
 
 				switch (Snake_direction) {
@@ -238,6 +217,8 @@ int main() {
 				Is_Apple_exist = TRUE;								//��� �ڿ� ��� �ִٰ� ���ش�
 			}
 
+			//여기부터 키보드 입력에 관한 부분인 듯.
+
 			if (_kbhit()) {						//Ű���� �Է��� ������
 				key = _getch();						//Ű�� �ް�
 
@@ -246,136 +227,10 @@ int main() {
 				case 75: if (Snake_direction_O != East && Is_Game_move) Snake_direction = West; break;
 				case 80: if (Snake_direction_O != North && Is_Game_move) Snake_direction = South; break;
 				case 72: if (Snake_direction_O != South && Is_Game_move) Snake_direction = North; break;
-
-				case 13: Is_Game_move = FALSE; break;							//���͸� �Է¹����� ������ ��� �����
-				case 110:													//n�� ������
-					if (Is_Mode_Debug) Is_Mode_Noclip = 1 - Is_Mode_Noclip;	//����� ����� ��Ŭ�� ��带 ���� ����
-					Debug_Show();											//��Ŭ�� ����� üũ����
-					break;
-				}
-
-				if (Is_Game_move == FALSE) {		//������ �Ͻ������Ǹ� ����ó�� �������
-					gotoxy(54, 9);
-					printf("P A U S E");
-					gotoxy(45, 11);
-					printf("Continue\t\tGo To Menu");
-					gotoxy(45, 12);
-					printf(" [Enter] \t\t  [Space]");
-
-					if (_kbhit) {			//Ű���� �Է��� �ް�
-						key = _getch();
-
-						switch (key) {
-						case 13:						//���͸� ������
-							Is_Game_move = TRUE;			//���� ��� �Ұ���
-							gotoxy(54, 9);				//�Ͻ������϶� ������ ������
-							printf("                     ");
-							gotoxy(45, 11);
-							printf("                                ");
-							gotoxy(45, 12);
-							printf("                            ");
-							break;
-
-						case 32:						//�����̽���
-							Is_Ingame = FALSE;				//���� ���Ұ��� �Ѥ� ������ũ ����
-							Is_Pause_stop = TRUE;			//�ٷ� ����
-							gotoxy(54, 9);					//�Ͻ������϶� ������ ������
-							printf("                     ");
-							gotoxy(45, 11);
-							printf("                                ");
-							gotoxy(45, 12);
-							printf("                            ");
-							break;
-						}
-					}
-				}
-			}
-
-			gotoxy(23, 21);														//������ ����
-			printf("���� :    %4d ��\n", Snake_length*Difficulty_num);			//���� ����Ʈ����
-
-			if (Is_Mode_Debug) {												//����� �� �� �׽�Ʈ �ڵ���
-				printf("MAX_Snake_length = %d\n", MAX_Snake_length);				//�� �ִ����
-				printf("Speed = %d (ms)\n", Difficulty_speed[Difficulty_num]);		//�ӵ�
-				printf("Snake_direction = %d\n", Snake_direction);					//�� �Ӹ� ����
-				printf("timer = %d", Timer);										//�����ð�
-
-				for (x = 0; x < 20; x++) {
-					for (y = 0; y < 20; y++) {
-						gotoxy(45 + 2 * x, y);										//���� ȭ�� ����
-						printf("%d ", Map[y][x]);									//�׸��� �ƴ϶� ���� �� ��ü�� ���
-					}
-				}
-			}
-		}
-
-		//Is_Ingame�� 0�̸� (== ������ ��������)
-		fflush(stdin);	//���ݱ��� �Է¹��� ���� �� �����
-
-		if (Is_Pause_stop) {			//�Ͻ������ؼ� ���� ���̶��
-			Snake_clear(Snake_length);		//���� �ʱ�ȭ
-			Map[Apple_y][Apple_x] = 0;		//�ʵ� �ʱ�ȭ
-			Apple_x = Apple_y = 0;
-		}
-
-		else{							//���������� ����� ���̸�
-			gotoxy(45, 5);																		//�����ٰ�
-			char Gameover[12] = { 'G', 'A', 'M', 'E', ' ', 'O', 'V', 'E', 'R','.','.','.' };	//���� ���� �۾�
-			for (x = 0; x < 12; x++) {
-				printf("%c ", Gameover[x]);														//gameover �۾��� ���ʴ�� �����
-				Sleep(100);																		//��� ����
-			}
-
-			//���� ���� ȭ���� ������ش�
-			gotoxy(45, 9);
-			printf("�ٽ� �÷��� �Ͻðڽ��ϱ�?");
-			gotoxy(45, 11);
-			printf("  Yes\t\t  No");
-			gotoxy(45, 12);
-			printf("[Enter]\t\t[Space]");
-
-			if ((Difficulty_num < 6) && (Snake_length*Difficulty_num  >= 100)) { //������ �̸� ���̵����� 100�� �̻��
-				gotoxy(45, 10);
-				Text_color(0x0004);							//����
-				printf("���̵� ���� â + �顿10 = ...?");	//������ �ر� ��Ʈ�� �˷��ش�
-				Text_color(0x0007);							//�Ͼ�
-			}
-
-			BOOL Is_Game_question = TRUE;	//�� ȭ���� ������ų ����
-			while (Is_Game_question) {		// Ű ������ ������ ���� ����,
-				key = _getch();
-
-				switch (key) {
-				case 32:						//�����̽� ������
-					gotoxy(0, 23);					//���� ȭ�� ������ ���� (�� ������ ���� ������ �ؿ� �߰� �ϱ� ����)
-					Is_Game = FALSE;					//�� ���� ����
-					Is_Game_question = FALSE;			//�� ȭ�鵵 ����
-					break;
-
-				case 13:						//���� ������
-					Snake_clear(Snake_length);		//���� �ʱ�ȭ
-					Map[Apple_y][Apple_x] = 0;		//�ʵ� �ʱ�ȭ
-					Apple_x = Apple_y = 0;			//��� ��ǥ�� �ʱ�ȭ
-					Is_Game_question = FALSE;		//�� ȭ�鵵 ����
-					break;
 				}
 			}
 		}
 	}
-}
-
-//��ǥ ���� �Լ�
-void gotoxy(int x, int y) {
-	COORD Pos = { x, y };
-	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), Pos);
-}
-
-//Ŀ�� �ȱ����̰� �ϴ� �Լ�
-void CursorView(int show) {
-	CONSOLE_CURSOR_INFO ConsoleCursor;
-	ConsoleCursor.bVisible = show;
-	ConsoleCursor.dwSize = 1;
-	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ConsoleCursor);
 }
 
 //�� �ʱ�ȭ �ϴ� �Լ�
@@ -398,61 +253,6 @@ void Map_print() {
 	}
 	//Text_color(0x0007);
 	Debug_Show();
-}
-
-void Debug_Show() {
-	if (Is_Mode_Debug) {	//����� ����̸�
-		gotoxy(0, 0);			//ȭ�� �»�ܿ�
-		Text_color(0x0003);		//�Ķ�
-		printf("��");			//�����!
-		Text_color(0x0007);		//�Ͼ�
-	}
-	else {
-		gotoxy(0, 0);			//ȭ�� �»�ܿ�
-		printf("��");			//�� �Ϲ� �÷��̾�~
-	}
-
-	if (!(!Is_Mode_Debug || Is_Ingame)) {	//����� ����̸鼭 �޴��϶�
-		gotoxy(45, 3);						//������ ���
-		printf("****�����  ���****");
-		gotoxy(45, 5);
-		printf("[d] ����� ��� ����");
-		gotoxy(45, 6);
-		printf("[n] ��Ŭ�� ��� ����");
-		gotoxy(45, 7);
-		printf("[s] �ӵ� ���Ƿ� �Է�");
-	}
-
-	else {									//�ƴϸ�
-		gotoxy(45, 3);						//�� ����
-		printf("                    ");
-		gotoxy(45, 5);
-		printf("                    ");
-		gotoxy(45, 6);
-		printf("                    ");
-		gotoxy(45, 7);
-		printf("                    ");
-	}
-
-	if (Is_Mode_Noclip) {
-		gotoxy(38, 0);
-		Text_color(0x0006);
-		printf("��");
-		Text_color(0x0007);
-	}
-	else {
-		gotoxy(38, 0);
-		printf("��");
-	}
-
-	if (!(!Is_Mode_Noclip || Is_Ingame)) {
-		gotoxy(61, 6);
-		printf("����");
-	}
-	else if (!(!Is_Mode_Debug || Is_Ingame)) {
-			gotoxy(61, 6);
-			printf("����");
-	}
 }
 
 //�� ĭ�� ������Ʈ�� �ٲ��ִ� �Լ�
