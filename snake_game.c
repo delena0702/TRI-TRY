@@ -84,6 +84,7 @@ void snakeGame(int fd[])
 	int snakeDirection = EAST;
 	int snakeDirection_OLD = EAST;
 	int snakeGrowthInterval = 30;	//!! 중요. 뱀은 매 30블럭을 움직일 때마다 자람, 이 간격은 게임 시간이 지날 때마다 줄어들어야 함! 임시로 정해둔 내용,
+	int snakeSpeedInterval = 120;	//120칸 움직일 때마다 뱀 속도가 증가.
 
 	///2. 사과
 	Pst apple = { 0,0 };	//사과의 위치를 저장할 변수.
@@ -218,7 +219,6 @@ void snakeGame(int fd[])
 						apple.y = (rand() % MAP_SIZE) + 1;
 					} while (map[apple.y][apple.x] != EMPTY);
 
-					map[apple.y][apple.x] = APPLE;
 					move(apple.x, apple.y, w.ws_col);
 					object_print(APPLE);
 					IsAppleExist = TRUE;
@@ -228,8 +228,23 @@ void snakeGame(int fd[])
 			}
 
 			timeInterval++;
-			if(timeInterval >= snakeGrowthInterval){
+
+			if(timeInterval % snakeGrowthInterval == 0){
 				snakeLengthMAX++;
+			}
+
+			if(timeInterval % snakeSpeedInterval == 0){
+				setitimer (ITIMER_REAL, 0, NULL);
+
+				struct itimerval timerCh;
+				struct itimerval timerO;
+
+				getitimer(ITIMER_REAL, &timerO);
+				timerCh.it_value.tv_sec = 0;
+				if(timerO.it_value.tv_usec > 1000) timerCh.it_value.tv_usec = timerO.it_value.tv_usec - 1000;	//처음 1회에 대한 interval
+				timerCh.it_interval.tv_sec = 0;
+				if(timerO.it_interval.tv_usec > 1000) timerCh.it_interval.tv_usec = timerO.it_interval.tv_usec - 1000;	//한 번 실행 이후에 대한 interval
+				setitimer (ITIMER_REAL, &timerCh, NULL);	//위에서 정의한 시간마다 SIGALRM을 발생시킨다.
 				timeInterval = 0;
 			}
 		}
