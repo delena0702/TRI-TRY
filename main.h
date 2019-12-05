@@ -2,6 +2,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <ncurses.h>
+#include <time.h>
+#include <signal.h>
+#include <sys/time.h>
 #include <errno.h>
 #include <termios.h>
 
