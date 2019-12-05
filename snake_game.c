@@ -1,4 +1,4 @@
-#include "main.h"
+﻿#include "main.h"
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
@@ -21,7 +21,7 @@
 #define NORTH 0x00B3
 
 //정의; bool 타입. C언어에 boolean 타입이 없엇음,,,?
-typedef enum { FALSE, TRUE } Bool;
+typedef unsigned int Bool;
 
 //정의; Pst 타입. 2차원 좌표 구조체.
 typedef struct Position {
@@ -33,14 +33,14 @@ Bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들�
 
 void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 TRUE로 바꾼다.
 void object_print(int ch);
-int move(int, int, int);
+int snake_move(int, int, int);
 
 void snakeGame(int fd[])
 {
 	//다음의 구문은 단위 시간마다 Signal을 발생시켜, 뱀을 규칙적으로 움직이게 하기 위한 구조체들을 정의하기 위한 구문이다.
 	///SIGALRM 처리를 위한 구조체.
 	struct sigaction sa;
-	sa.sa_sigaction = &timer_handler;
+	sa.sa_handler = &timer_handler;
 	sa.sa_flags = SA_SIGINFO;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGALRM, &sa, NULL);
@@ -107,7 +107,7 @@ void snakeGame(int fd[])
 	//맵 출력
 	for(y = 0; y < MAP_SIZE; y++){
 		for(x = 0; x < MAP_SIZE; x++){
-			move(x, y, w.ws_col);
+			snake_move(x, y, w.ws_col);
 			object_print(map[y][x]);
 		}
 		printf("\n");
@@ -191,13 +191,13 @@ void snakeGame(int fd[])
 
 				case EMPTY:
 					map[snake[snakeLength].y][snake[snakeLength].x] = SNAKE;
-					move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);
+					snake_move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);
 					object_print(SNAKE);
 					snakeLength++;
 
 					while (snakeLength > snakeLengthMAX){
 						map[snake[0].y][snake[0].x] = EMPTY;
-						move(snake[0].x, snake[0].y, w.ws_col);
+						snake_move(snake[0].x, snake[0].y, w.ws_col);
 						object_print(EMPTY);
 
 						for (x = 0; x < snakeLength; x++) {
@@ -219,7 +219,7 @@ void snakeGame(int fd[])
 					} while (map[apple.y][apple.x] != EMPTY);
 
 					map[apple.y][apple.x] = APPLE;
-					move(apple.x, apple.y, w.ws_col);
+					snake_move(apple.x, apple.y, w.ws_col);
 					object_print(APPLE);
 					IsAppleExist = TRUE;
 				}
@@ -236,7 +236,7 @@ void snakeGame(int fd[])
 	}
 }
 
-int move(int x, int y, int col){
+int snake_move(int x, int y, int col){
 	char es[100];    //string to hold the escape sequence
 	char xstr[100];  //need to convert the integers to string
 	char ystr[100];

@@ -45,7 +45,7 @@ int main(void)
 			// 종료 시까지 대기
 			while (1)
 			{
-				int ch = getch();
+				int ch = _getch();
 				
 				switch (ch)
 				{
@@ -54,9 +54,9 @@ int main(void)
 					break;
 
 				case 27: // 상하좌우
-					if (getch() == 91)
+					if (_getch() == 91)
 					{
-						ch = getch();
+						ch = _getch();
 
 						if ((ch >= 65) && (ch <= 68))
 							write(fd[1][1], &ch, 1);

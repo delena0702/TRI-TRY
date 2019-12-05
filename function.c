@@ -21,7 +21,7 @@ void showCursor(int isShow)
 	fflush(stdout);
 }
 
-int getch(void)
+int _getch(void)
 {
 	struct termios o, n;
 	int ch;

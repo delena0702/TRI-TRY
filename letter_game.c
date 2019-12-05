@@ -5,7 +5,9 @@
 
 #define ALPHABET 26
 
-void alarmSigHand(int sig);
+void alrmSigHand(int sig);
+
+WINDOW* win;
 
 void letterGame(int fd[])
 {
@@ -34,17 +36,17 @@ void letterGame(int fd[])
 	if(setitimer(ITIMER_REAL, &current_timer , NULL) == -1)
 	{
 		perror("Failed to set timer");
-		return 1;
+		exit(-1);
 	}
 
-	alrm_act.sa_handler = alrmSigHand;
+	alrm_act.sa_handler = &alrm_act;
 	alrm_act.sa_flags = 0;
 	
 	if(sigemptyset(&alrm_act.sa_mask) == -1 ||
 		sigaction(SIGALRM, &alrm_act, NULL) == -1)
 	{
 		perror("Failed to install SIGALRM signal handler");
-		return 1;
+		exit(-1);
 	}
 
 	refresh();
@@ -58,7 +60,7 @@ void letterGame(int fd[])
 	mvwprintw(win, y, x, "%c", output);
 	wrefresh(win);
 
-	while(input = fd[0][1])	// user_input
+	while(input = fd[0])	// user_input
 	{
 		if(input == output || input == output - ('A' - 'a'))	
 		{
@@ -71,7 +73,6 @@ void letterGame(int fd[])
 			{
 				perror("Failed to reset timer");
 				exit(1);
-				return 1;
 			}
 			else
 			{
@@ -91,13 +92,14 @@ void letterGame(int fd[])
 	}
 	endwin();
 
-	return 0;
+	exit(0);
 }
 
 void alrmSigHand(int sig)
 {
 	struct itimerval end_timer;
 	struct sigaction end_act;
+	sigset_t sigall, sigmost;
 
 	end_timer.it_interval.tv_sec = 0;	// set end timer
 	end_timer.it_interval.tv_usec = 0;
