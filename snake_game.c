@@ -21,7 +21,7 @@
 #define NORTH 0x00B3
 
 //정의; bool 타입. C언어에 boolean 타입이 없엇음,,,?
-typedef enum { FALSE, TRUE } Bool;
+// typedef enum { false, true } bool;
 
 //정의; Pst 타입. 2차원 좌표 구조체.
 typedef struct Position {
@@ -29,18 +29,18 @@ typedef struct Position {
 	int y;
 } Pst;
 
-Bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들러 함수에서는 변수를 넘겨받을 수 없으므로 플래그값만 전역변수로 만들어준다.
+bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들러 함수에서는 변수를 넘겨받을 수 없으므로 플래그값만 전역변수로 만들어준다.
 
-void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 TRUE로 바꾼다.
+void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 true로 바꾼다.
 void object_print(int ch);
-int move(int, int, int);
+int move_s(int, int, int);
 
 void snakeGame(int fd[])
 {
 	//다음의 구문은 단위 시간마다 Signal을 발생시켜, 뱀을 규칙적으로 움직이게 하기 위한 구조체들을 정의하기 위한 구문이다.
 	///SIGALRM 처리를 위한 구조체.
 	struct sigaction sa;
-	sa.sa_sigaction = &timer_handler;
+	sa.sa_handler = timer_handler;
 	sa.sa_flags = SA_SIGINFO;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGALRM, &sa, NULL);
@@ -87,19 +87,19 @@ void snakeGame(int fd[])
 
 	///2. 사과
 	Pst apple = { 0,0 };	//사과의 위치를 저장할 변수.
-	Bool IsAppleExist;	//사과 존재 여부.
+	bool IsAppleExist;	//사과 존재 여부.
 	
 	char ch;	//입력 키를 저장하기 위한 변수.
 
 	//다음 구문은 게임을 초기화한다.
 	srand((int)time(NULL));
 
-	IsSnakeMove = FALSE;
+	IsSnakeMove = false;
 	snake[0].x = snake[0].y = MAP_SIZE / 2;
 	map[snake[0].y][snake[0].x] = SNAKE;
 	snakeLength++;
 
-	IsAppleExist = TRUE;
+	IsAppleExist = true;
 	apple.x = (rand() % MAP_SIZE) + 1;
 	apple.y = (rand() % MAP_SIZE) + 1;
 	map[apple.y][apple.x] = APPLE;
@@ -107,13 +107,13 @@ void snakeGame(int fd[])
 	//맵 출력
 	for(y = 0; y < MAP_SIZE; y++){
 		for(x = 0; x < MAP_SIZE; x++){
-			move(x, y, w.ws_col);
+			move_s(x, y, w.ws_col);
 			object_print(map[y][x]);
 		}
 		printf("\n");
 	}
 
-	while (TRUE) {
+	while (true) {
 		int readByte;
 		ch = 0;
 		readByte = read(fd[0], &ch, 1);	//부모 프로세스에서 pipe를 통해 키보드 값을 읽어옴
@@ -148,7 +148,7 @@ void snakeGame(int fd[])
 		}
 
 		else {	//값을 읽어오지 않았을 경우 (== 인터럽트 당했을 경우)
-			if(IsSnakeMove == TRUE) {
+			if(IsSnakeMove == true) {
 				//뱀의 머리를 이동시킨다.
 				switch (snakeDirection){
 				case EAST: //머리가 동쪽일 경우
@@ -181,7 +181,7 @@ void snakeGame(int fd[])
 				case APPLE:
 					snakeLengthMAX--;	//최대 뱀 길이를 감소시킨다.
 
-					IsAppleExist = FALSE;
+					IsAppleExist = false;
 					//break를 씌우지 않고 넘김으로써 EMPTY와 같이 처리되도록 한다. (SNAKE 구문은 어차피 통과할 것이므로.)
 
 				case SNAKE:
@@ -191,13 +191,13 @@ void snakeGame(int fd[])
 
 				case EMPTY:
 					map[snake[snakeLength].y][snake[snakeLength].x] = SNAKE;
-					move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);
+					move_s(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);
 					object_print(SNAKE);
 					snakeLength++;
 
 					while (snakeLength > snakeLengthMAX){
 						map[snake[0].y][snake[0].x] = EMPTY;
-						move(snake[0].x, snake[0].y, w.ws_col);
+						move_s(snake[0].x, snake[0].y, w.ws_col);
 						object_print(EMPTY);
 
 						for (x = 0; x < snakeLength; x++) {
@@ -219,12 +219,12 @@ void snakeGame(int fd[])
 					} while (map[apple.y][apple.x] != EMPTY);
 
 					map[apple.y][apple.x] = APPLE;
-					move(apple.x, apple.y, w.ws_col);
+					move_s(apple.x, apple.y, w.ws_col);
 					object_print(APPLE);
-					IsAppleExist = TRUE;
+					IsAppleExist = true;
 				}
 				
-				IsSnakeMove = FALSE;
+				IsSnakeMove = false;
 			}
 
 			timeInterval++;
@@ -236,7 +236,7 @@ void snakeGame(int fd[])
 	}
 }
 
-int move(int x, int y, int col){
+int move_s(int x, int y, int col){
 	char es[100];    //string to hold the escape sequence
 	char xstr[100];  //need to convert the integers to string
 	char ystr[100];
@@ -248,12 +248,13 @@ int move(int x, int y, int col){
 	//build the escape sequence
 	es[0]='\0';     //truncate es to zero length
 	strcat(es, "\033[");   //\033 is Esc in octal, 3*8 + 3 = 27
-	strcat(es, ystr);        //concatenate the y move
+	strcat(es, ystr);        //concatenate the y move_s
+
 	strcat(es, "d");        // d is the code to move the cursor vertically
 
 	strcat(es, "\033[");
 	strcat(es, xstr);
-	strcat(es, "G");     //G is the code to move the cursor horizontally
+	strcat(es, "G");     //G is the code to move_s the cursor horizontally
 
 	//execute the escape sequence
 	printf("%s", es);
@@ -262,7 +263,7 @@ int move(int x, int y, int col){
 }
 
 void timer_handler(int signum){
-	IsSnakeMove = TRUE;
+	IsSnakeMove = true;
 }
 
 void object_print(int ch) {
