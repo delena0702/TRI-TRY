@@ -21,7 +21,7 @@
 #define NORTH 0x00B3
 
 //정의; bool 타입. C언어에 boolean 타입이 없엇음,,,?
-typedef unsigned int Bool;
+typedef int Bool;
 
 //정의; Pst 타입. 2차원 좌표 구조체.
 typedef struct Position {
@@ -29,9 +29,9 @@ typedef struct Position {
 	int y;
 } Pst;
 
-bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들러 함수에서는 변수를 넘겨받을 수 없으므로 플래그값만 전역변수로 만들어준다.
+Bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들러 함수에서는 변수를 넘겨받을 수 없으므로 플래그값만 전역변수로 만들어준다.
 
-void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 true로 바꾼다.
+void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 TRUE로 바꾼다.
 void object_print(int ch);
 int snake_move(int, int, int);
 
@@ -72,7 +72,8 @@ void snakeGame(int fd[])
 			map[y][x] = EMPTY;
 		}
 	}
-	for (x = 0; x < MAP_SIZE + 1; x++) {
+	for (x = 0; x < MAP_SIZE + 2; x++) {
+		map[0][x] = map[x][MAP_SIZE + 1] = map[MAP_SIZE + 1][x] = map[x][0] = WALL;	//맵에 벽을 만들어준다.
 	}
 	int timeInterval = 0;
 
@@ -87,7 +88,7 @@ void snakeGame(int fd[])
 
 	///2. 사과
 	Pst apple = { 0,0 };	//사과의 위치를 저장할 변수.
-	bool IsAppleExist;	//사과 존재 여부.
+	Bool IsAppleExist;	//사과 존재 여부.
 	
 	char ch;	//입력 키를 저장하기 위한 변수.
 
@@ -107,8 +108,8 @@ void snakeGame(int fd[])
 	IsAppleExist = TRUE;						//"사과는 존재한다!"
 	
 	//맵 출력
-	for(y = 0; y < MAP_SIZE; y++){
-		for(x = 0; x < MAP_SIZE; x++){
+	for(y = 0; y < MAP_SIZE + 2; y++){
+		for(x = 0; x < MAP_SIZE + 2; x++){
 			snake_move(x, y, w.ws_col);
 			object_print(map[y][x]);
 		}
@@ -146,7 +147,7 @@ void snakeGame(int fd[])
 		}
 
 		else {	//값을 읽어오지 않았을 경우 (== 인터럽트 당했을 경우)
-			if(IsSnakeMove == true) {
+			if(IsSnakeMove == TRUE) {
 				//뱀의 머리를 이동시킨다.
 				switch (snakeDirection){
 				case EAST: //머리가 동쪽일 경우
@@ -179,7 +180,7 @@ void snakeGame(int fd[])
 				case APPLE:
 					snakeLengthMAX--;	//최대 뱀 길이를 감소시킨다.
 
-					IsAppleExist = false;
+					IsAppleExist = FALSE;
 					//break를 씌우지 않고 넘김으로써 EMPTY와 같이 처리되도록 한다. (SNAKE 구문은 어차피 통과할 것이므로.)
 
 				case SNAKE:
@@ -189,15 +190,15 @@ void snakeGame(int fd[])
 					//break를 씌우지 않고 넘김으로써 EMPTY와 같이 처리되도록 한다.
 
 				case EMPTY:
-					map[snake[snakeLength].y][snake[snakeLength].x] = SNAKE;
-					snake_move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);
-					object_print(SNAKE);
-					snakeLength++;
+					map[snake[snakeLength].y][snake[snakeLength].x] = SNAKE;	// 현재 머리 값을 뱀 머리로 해준다.
+					snake_move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);	// 커서 옮겨서
+					object_print(SNAKE);										// 뱀 출력
+					snakeLength++;												// 뱀 길이 ++
 
-					while (snakeLength > snakeLengthMAX){
-						map[snake[0].y][snake[0].x] = EMPTY;
-						snake_move(snake[0].x, snake[0].y, w.ws_col);
-						object_print(EMPTY);
+					while (snakeLength > snakeLengthMAX){	//뱀 길이가 max보다 길 때
+						map[snake[0].y][snake[0].x] = EMPTY;	//뱀 꼬리 삭제
+						snake_move(snake[0].x, snake[0].y, w.ws_col);	//커서 이동
+						object_print(EMPTY);					//빈 칸 출력
 
 						for (x = 0; x < snakeLength; x++) {		// 배열 값을 한 칸씩 이동시킨다.
 							snake[x].x = snake[x + 1].x;
@@ -217,7 +218,7 @@ void snakeGame(int fd[])
 						apple.y = (rand() % MAP_SIZE) + 1;
 					} while (map[apple.y][apple.x] != EMPTY);	//빈 칸 찾아서
 
-					map[apple.y][apple.x] = APPLE;
+					map[apple.y][apple.x] = APPLE;		//사과로 해준다.
 					snake_move(apple.x, apple.y, w.ws_col);
 					object_print(APPLE);
 					
@@ -254,13 +255,12 @@ int snake_move(int x, int y, int col){
 	//build the escape sequence
 	es[0]='\0';     //truncate es to zero length
 	strcat(es, "\033[");   //\033 is Esc in octal, 3*8 + 3 = 27
-	strcat(es, ystr);        //concatenate the y move_s
-
+	strcat(es, ystr);        //concatenate the y move
 	strcat(es, "d");        // d is the code to move the cursor vertically
 
 	strcat(es, "\033[");
 	strcat(es, xstr);
-	strcat(es, "G");     //G is the code to move_s the cursor horizontally
+	strcat(es, "G");     //G is the code to move the cursor horizontally
 
 	//execute the escape sequence
 	printf("%s", es);
@@ -269,7 +269,7 @@ int snake_move(int x, int y, int col){
 }
 
 void timer_handler(int signum){
-	IsSnakeMove = true;
+	IsSnakeMove = TRUE;
 }
 
 void object_print(int ch) {

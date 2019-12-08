@@ -25,6 +25,7 @@ int main(void)
 	//자식은 i = 0, 1, 2 부모는 i = 3
 	
 	//각 함수로 pipe 인자를 보냄
+
 	switch (i)
 	{
 	case 0:

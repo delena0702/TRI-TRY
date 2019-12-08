@@ -14,7 +14,7 @@ int move_l(int x, int y);
 
 void letterGame(int fd[])
 {
-	int input, output;
+	char input, output;
 	int y, x, output_y, output_x;
 	int answer_count = 0;
 	int signum = SIGALRM;
@@ -38,7 +38,7 @@ void letterGame(int fd[])
 		return ;
 	}
 
-	alrm_act.sa_handler = alarmSigHand;
+	alrm_act.sa_handler = &alarmSigHand;
 	alrm_act.sa_flags = 0;
 	
 	if(sigemptyset(&alrm_act.sa_mask) == -1 ||
@@ -71,7 +71,7 @@ void letterGame(int fd[])
 		}
 	}
 
-	for(x = 1; x < WIDTH + 2; x++)
+	for(x = 1; x < WIDTH + 1; x++)
 	{
 		map[0][x] = '-';
 		map[HEIGHT + 1][x] = '-';
@@ -90,7 +90,6 @@ void letterGame(int fd[])
 
 	map[output_y][output_x] = output;
 
-	move_l(1, 1);
 	for(y = 0; y < HEIGHT + 2; y++)
 	{
 		for(x = 0; x < WIDTH + 2; x++)
@@ -101,7 +100,7 @@ void letterGame(int fd[])
 		printf("\n");
 	}
 
-	while(true)	// user_input
+	while(1)	// user_input
 	{
 		int read_word = read(fd[0], &input, 1);
 
@@ -112,8 +111,8 @@ void letterGame(int fd[])
 			answer_count++;
 			current_timer.it_value.tv_sec = 4 - (answer_count / 10);
 			current_timer.it_value.tv_usec = 1000 - (answer_count * 100);
-
-			if(setitimer(ITIMER_REAL, &current_timer , NULL) == -1)	// reset timer
+			
+			if(setitimer(ITIMER_REAL, &current_timer ,NULL) == -1)	// reset timer
 			{
 				perror("Failed to reset timer");
 				exit(1);
@@ -132,7 +131,6 @@ void letterGame(int fd[])
 			map[output_y][output_x] = output;
 
 			// mvwprintw(win, y , x, "%c", output);
-			move_l(1, 1);
 			for(y = 0; y < HEIGHT + 2; y++)
 			{
 				for(x = 0; x < WIDTH + 2; x++)
@@ -147,9 +145,6 @@ void letterGame(int fd[])
 
 		}
 	}
-	// endwin();
-
-	exit(0);
 }
 
 int move_l(int x, int y)
@@ -178,36 +173,6 @@ int move_l(int x, int y)
 
 void alarmSigHand(int sig)
 {
-	// struct itimerval end_timer;
-	// struct sigaction end_act;
-
-	// end_timer.it_interval.tv_sec = 0;	// set end timer
-	// end_timer.it_interval.tv_usec = 0;
-	// end_timer.it_value.tv_sec = 5;
-	// end_timer.it_value.tv_usec = 0;
-
-	// end_act.sa_handler = alarmSigHand;	//SETEND signal handler
-	// end_act.sa_flags = 0;
-
-	// if(sigaction(SIGALRM, &end_act, NULL) == -1)
-	// {
-	// 	perror("Failed to install SIGALRM signal handler");
-	// 	exit(1);	
-	// 	return ;
-	// }
-
-	// wclear(win);
-	// box(win, 0, 0);
-	// wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
-	// mvwprintw(win, HEIGHT / 2, WIDTH / 2 , "Time Over!!");
-	// wrefresh(win);
-	
-	// if(setitimer(ITIMER_REAL, &end_timer , NULL) == -1)	
-	// {
-	// 	perror("Failed to set endtimer");
-	// 	exit(1);
-	// 	return ;
-	// }
-	exit(1);
-
+	printf("\033[20d\033[1GLetter Game Out\n");
+	exit(0);
 }
