@@ -45,7 +45,7 @@ void letterGame(int fd[])
 		sigaction(SIGALRM, &alrm_act, NULL) == -1)
 	{
 		perror("Failed to install SIGALRM signal handler");
-		return ;
+		exit(-1);
 	}
 
 	// struct winsize w;
@@ -117,7 +117,6 @@ void letterGame(int fd[])
 			{
 				perror("Failed to reset timer");
 				exit(1);
-				return ;
 			}
 			// else
 			// {
@@ -150,7 +149,7 @@ void letterGame(int fd[])
 	}
 	// endwin();
 
-	return ;
+	exit(0);
 }
 
 int move_l(int x, int y)

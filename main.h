@@ -13,7 +13,7 @@
 
 void gotoxy(unsigned int x, unsigned int y);
 void showCursor(int isShow);
-// int getch(void);
+int _getch(void);
 
 void letterGame(int fd[]);
 void snakeGame(int fd[]);
