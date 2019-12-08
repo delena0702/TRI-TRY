@@ -29,9 +29,9 @@ typedef struct Position {
 	int y;
 } Pst;
 
-Bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들러 함수에서는 변수를 넘겨받을 수 없으므로 플래그값만 전역변수로 만들어준다.
+bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들러 함수에서는 변수를 넘겨받을 수 없으므로 플래그값만 전역변수로 만들어준다.
 
-void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 TRUE로 바꾼다.
+void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 true로 바꾼다.
 void object_print(int ch);
 int snake_move(int, int, int);
 
@@ -87,7 +87,7 @@ void snakeGame(int fd[])
 
 	///2. 사과
 	Pst apple = { 0,0 };	//사과의 위치를 저장할 변수.
-	Bool IsAppleExist;	//사과 존재 여부.
+	bool IsAppleExist;	//사과 존재 여부.
 	
 	char ch;	//입력 키를 저장하기 위한 변수.
 
@@ -146,7 +146,7 @@ void snakeGame(int fd[])
 		}
 
 		else {	//값을 읽어오지 않았을 경우 (== 인터럽트 당했을 경우)
-			if(IsSnakeMove == TRUE) {
+			if(IsSnakeMove == true) {
 				//뱀의 머리를 이동시킨다.
 				switch (snakeDirection){
 				case EAST: //머리가 동쪽일 경우
@@ -179,7 +179,7 @@ void snakeGame(int fd[])
 				case APPLE:
 					snakeLengthMAX--;	//최대 뱀 길이를 감소시킨다.
 
-					IsAppleExist = FALSE;
+					IsAppleExist = false;
 					//break를 씌우지 않고 넘김으로써 EMPTY와 같이 처리되도록 한다. (SNAKE 구문은 어차피 통과할 것이므로.)
 
 				case SNAKE:
@@ -254,12 +254,13 @@ int snake_move(int x, int y, int col){
 	//build the escape sequence
 	es[0]='\0';     //truncate es to zero length
 	strcat(es, "\033[");   //\033 is Esc in octal, 3*8 + 3 = 27
-	strcat(es, ystr);        //concatenate the y move
+	strcat(es, ystr);        //concatenate the y move_s
+
 	strcat(es, "d");        // d is the code to move the cursor vertically
 
 	strcat(es, "\033[");
 	strcat(es, xstr);
-	strcat(es, "G");     //G is the code to move the cursor horizontally
+	strcat(es, "G");     //G is the code to move_s the cursor horizontally
 
 	//execute the escape sequence
 	printf("%s", es);
@@ -268,7 +269,7 @@ int snake_move(int x, int y, int col){
 }
 
 void timer_handler(int signum){
-	IsSnakeMove = TRUE;
+	IsSnakeMove = true;
 }
 
 void object_print(int ch) {

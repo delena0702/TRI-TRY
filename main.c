@@ -75,11 +75,11 @@ int main(void)
 						return 0;
 					}
 
-					else
-					{
-						printf(">>%d<<\n", ch);
-						fflush(stdout);
-					}
+					// else
+					// {
+					// 	printf(">>%d<<\n", ch);
+					// 	fflush(stdout);
+					// }
 					break;
 				}
 			}
