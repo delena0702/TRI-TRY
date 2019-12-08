@@ -1,4 +1,4 @@
-#include "main.h"
+﻿#include "main.h"
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
@@ -21,7 +21,7 @@
 #define NORTH 0x00B3
 
 //정의; bool 타입. C언어에 boolean 타입이 없엇음,,,?
-typedef enum { FALSE, TRUE } Bool;
+typedef unsigned int Bool;
 
 //정의; Pst 타입. 2차원 좌표 구조체.
 typedef struct Position {
@@ -33,14 +33,14 @@ Bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들�
 
 void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 TRUE로 바꾼다.
 void object_print(int ch);
-int move(int, int, int);
+int snake_move(int, int, int);
 
 void snakeGame(int fd[])
 {
 	//다음의 구문은 단위 시간마다 Signal을 발생시켜, 뱀을 규칙적으로 움직이게 하기 위한 구조체들을 정의하기 위한 구문이다.
 	///SIGALRM 처리를 위한 구조체.
 	struct sigaction sa;
-	sa.sa_sigaction = &timer_handler;
+	sa.sa_handler = &timer_handler;
 	sa.sa_flags = SA_SIGINFO;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGALRM, &sa, NULL);
@@ -107,9 +107,9 @@ void snakeGame(int fd[])
 	IsAppleExist = TRUE;						//"사과는 존재한다!"
 	
 	//맵 출력
-	for(y = 0; y < MAP_SIZE + 2; y++){
-		for(x = 0; x < MAP_SIZE + 2; x++){
-			move(x, y, w.ws_col);
+	for(y = 0; y < MAP_SIZE; y++){
+		for(x = 0; x < MAP_SIZE; x++){
+			snake_move(x, y, w.ws_col);
 			object_print(map[y][x]);
 		}
 		printf("\n");
@@ -189,15 +189,15 @@ void snakeGame(int fd[])
 					//break를 씌우지 않고 넘김으로써 EMPTY와 같이 처리되도록 한다.
 
 				case EMPTY:
-					map[snake[snakeLength].y][snake[snakeLength].x] = SNAKE;	// 현재 머리 값을 뱀 머리로 해준다.
-					move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);	// 커서 옮겨서
-					object_print(SNAKE);										// 뱀 출력
-					snakeLength++;												// 뱀 길이 ++
+					map[snake[snakeLength].y][snake[snakeLength].x] = SNAKE;
+					snake_move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);
+					object_print(SNAKE);
+					snakeLength++;
 
-					while (snakeLength > snakeLengthMAX){	//뱀 길이가 max보다 길 때
-						map[snake[0].y][snake[0].x] = EMPTY;	//뱀 꼬리 삭제
-						move(snake[0].x, snake[0].y, w.ws_col);	//커서 이동
-						object_print(EMPTY);					//빈 칸 출력
+					while (snakeLength > snakeLengthMAX){
+						map[snake[0].y][snake[0].x] = EMPTY;
+						snake_move(snake[0].x, snake[0].y, w.ws_col);
+						object_print(EMPTY);
 
 						for (x = 0; x < snakeLength; x++) {		// 배열 값을 한 칸씩 이동시킨다.
 							snake[x].x = snake[x + 1].x;
@@ -217,8 +217,8 @@ void snakeGame(int fd[])
 						apple.y = (rand() % MAP_SIZE) + 1;
 					} while (map[apple.y][apple.x] != EMPTY);	//빈 칸 찾아서
 
-					map[apple.y][apple.x] = APPLE;		//사과로 해준다.
-					move(apple.x, apple.y, w.ws_col);
+					map[apple.y][apple.x] = APPLE;
+					snake_move(apple.x, apple.y, w.ws_col);
 					object_print(APPLE);
 					
 					IsAppleExist = TRUE;	//"사과는 존재한다!"
@@ -242,7 +242,7 @@ void snakeGame(int fd[])
 	}
 }
 
-int move(int x, int y, int col){
+int snake_move(int x, int y, int col){
 	char es[100];    //string to hold the escape sequence
 	char xstr[100];  //need to convert the integers to string
 	char ystr[100];
