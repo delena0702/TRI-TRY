@@ -72,9 +72,11 @@ void snakeGame(int fd[])
 			map[y][x] = EMPTY;
 		}
 	}
+
 	for (x = 0; x < MAP_SIZE + 2; x++) {
 		map[0][x] = map[x][MAP_SIZE + 1] = map[MAP_SIZE + 1][x] = map[x][0] = WALL;	//맵에 벽을 만들어준다.
 	}
+
 	int timeInterval = 0;
 
 	///1. 뱀
@@ -113,8 +115,13 @@ void snakeGame(int fd[])
 			snake_move(x, y, w.ws_col);
 			object_print(map[y][x]);
 		}
-		printf("\n");
-	}
+	}//////////////////////////////////////////
+	// for(y = 0; y < MAP_SIZE + 2; y++){
+	// 	for(x = 0; x < MAP_SIZE + 2; x++){
+	// 		snake_move(x, y, w.ws_col);
+	// 		object_print(map[y][x]);
+	// 	}
+	// }
 
 	//무한 루프
 	while (TRUE) {
@@ -275,16 +282,17 @@ void timer_handler(int signum){
 void object_print(int ch) {
 	switch (ch) {
 	case EMPTY:
-		printf("  \n");
+		printf("  ");
 		break;
 	case APPLE:
-		printf("★\n");
+		printf("★");
 		break;
 	case WALL:
-		printf("▨\n");
+		printf("▨");
 		break;
 	case SNAKE:
-		printf("■\n");
+		printf("■");
 		break;
 	}
+	fflush(stdout);
 }

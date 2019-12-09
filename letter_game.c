@@ -81,7 +81,6 @@ void letterGame(int fd[])
 	{
 		map[y][0] = '|';
 		map[y][WIDTH + 1] = '|';
-
 	}
 
 	output_y = rand() % HEIGHT + 1;
@@ -96,9 +95,20 @@ void letterGame(int fd[])
 		{
 			move_l(x + 1, y + 1);
 			printf("%c", map[y][x]);
+			fflush(stdout);
 		}
 		printf("\n");
-	}
+	}//////////////////////////////////////////
+	// for(y = 0; y < HEIGHT + 2; y++)
+	// {
+	// 	for(x = 0; x < WIDTH + 2; x++)
+	// 	{
+	// 		move_l(x + 1, y + 1);
+	// 		printf("%c", map[y][x]);
+	// 		fflush(stdout);
+	// 	}
+	// 	printf("\n");
+	// }
 
 	while(1)	// user_input
 	{
@@ -109,8 +119,8 @@ void letterGame(int fd[])
 			// wclear(win);
 			map[output_y][output_x] = ' ';
 			answer_count++;
-			current_timer.it_value.tv_sec = 4 - (answer_count / 10);
-			current_timer.it_value.tv_usec = 1000 - (answer_count * 100);
+			current_timer.it_value.tv_sec = 4 - (answer_count / 10);	// TODO : Minus Error
+			current_timer.it_value.tv_usec = 1000 - (answer_count * 100);	// TODO : Minus Error
 			
 			if(setitimer(ITIMER_REAL, &current_timer ,NULL) == -1)	// reset timer
 			{
@@ -137,8 +147,8 @@ void letterGame(int fd[])
 				{
 					move_l(x + 1, y + 1);
 					printf("%c", map[y][x]);
+					fflush(stdout);
 				}
-				printf("\n");
 			}
 
 			// wrefresh(win);
@@ -173,6 +183,5 @@ int move_l(int x, int y)
 
 void alarmSigHand(int sig)
 {
-	printf("\033[20d\033[1GLetter Game Out\n");
 	exit(0);
 }

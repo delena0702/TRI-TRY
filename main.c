@@ -1,12 +1,17 @@
 #include "main.h"
 
+void childHandler(int signum);
+
+pid_t child[3];
+
 int main(void)
 {
-	pid_t child;
 	int fd[3][2];
 	int i;
 
-	atexit(exiting);
+	struct sigaction sa;
+
+	printf("\033[H\033[J");
 
 	//pipe 생성
 	if (pipe(fd[0]) || pipe(fd[1]) || pipe(fd[2]))
@@ -17,7 +22,7 @@ int main(void)
 
 
 	for (i=0; i<3; i++)
-		if ((child = fork()) <= 0)
+		if ((child[i] = fork()) <= 0)
 			break;
 
 	//printf("Hi I'm %d and My child is %d (i = %d)\n", getpid(), child, i);//확인 구문
@@ -42,7 +47,15 @@ int main(void)
 
 	case 3:
 		{
+			atexit(exiting);
 			showCursor(0);
+
+			sa.sa_handler = &childHandler;
+			sa.sa_flags = 0;
+
+			if((sigemptyset(&sa.sa_mask) == -1) || (sigaction(SIGCHLD, &sa, NULL) == -1))
+				perror("Failed to install SIGALRM signal handler");
+
 			// 종료 시까지 대기
 			while (1)
 			{
@@ -89,4 +102,15 @@ int main(void)
 	}
 
 	return 0;
+}
+
+void childHandler(int signum)
+{
+	unsigned int i;
+
+	for (i=0;i<3;i++)
+		kill(child[i],SIGKILL);
+	printf("\033[H\033[J");
+	printf("Game Over");
+	exit(0);
 }

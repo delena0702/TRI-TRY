@@ -40,4 +40,11 @@ int _getch(void)
 void exiting(void)
 {
 	showCursor(1);
+	struct termios o, n;
+
+ 	tcgetattr(STDIN_FILENO, &o);
+ 	n = o;
+ 	n.c_lflag |= ICANON | ECHO ;
+
+ 	tcsetattr(STDIN_FILENO, TCSANOW, &n);
 }
