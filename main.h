@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <termios.h>
+#include <stdbool.h>
 
 void gotoxy(unsigned int x, unsigned int y);
 void showCursor(int isShow);
