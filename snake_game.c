@@ -22,6 +22,8 @@
 
 //정의; bool 타입. C언어에 boolean 타입이 없엇음,,,?
 typedef unsigned int Bool;
+#define TRUE 1
+#define FALSE 0
 
 //정의; Pst 타입. 2차원 좌표 구조체.
 typedef struct Position {
