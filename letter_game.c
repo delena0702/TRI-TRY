@@ -113,7 +113,7 @@ void letterGame(int fd[])
 	while(1)	// user_input
 	{
 		int read_word = read(fd[0], &input, 1);
-
+    
 		if((read_word == 1) && (input == output || input == output - ('A' - 'a')))	
 		{
 			// wclear(win);
