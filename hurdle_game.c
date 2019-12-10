@@ -10,7 +10,7 @@
 #define OBSTACLE_WIDTH 2
 #define OBSTACLE_HEIGHT 3
 
-#define TIC_PLAYER 10
+#define TIC_PLAYER 15
 #define TIC_DIFFICULT 2000
 
 void hurdleTimerHandler(int sig);
@@ -21,7 +21,7 @@ void checkGameover(void);
 unsigned int px = 3;	// x of Player
 unsigned int py = 0;	// y of Player
 double pv = 0;				// speed of Player(y)
-unsigned int obtic = 10;	// tic of Obstacle moving
+unsigned int obtic = 15;	// tic of Obstacle moving
 int obx[3] = {-100,-100,-100};	// x of Obstacle
 
 void hurdleGame(int fd[])

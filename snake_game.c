@@ -21,7 +21,7 @@
 #define NORTH 0x00B3
 
 //정의; bool 타입. C언어에 boolean 타입이 없엇음,,,?
-typedef int Bool;
+typedef enum { FALSE, TRUE } Bool;
 
 //정의; Pst 타입. 2차원 좌표 구조체.
 typedef struct Position {
@@ -32,11 +32,14 @@ typedef struct Position {
 Bool IsSnakeMove;	//뱀이 시간마다 움직여야 하는데 타이머핸들러 함수에서는 변수를 넘겨받을 수 없으므로 플래그값만 전역변수로 만들어준다.
 
 void timer_handler(int signum);	//타이머가 실행될 때마다 실행되는 함수. 여기서 뱀을 움직이는 플래그를 TRUE로 바꾼다.
-void object_print(int ch);
-int snake_move(int, int, int);
+// void object_print(int ch);
+int ObjectPrint(int, int, int, int);
 
 void snakeGame(int fd[])
 {
+	//다음 구문은 게임을 초기화한다.
+	srand((int)time(NULL));
+
 	//다음의 구문은 단위 시간마다 Signal을 발생시켜, 뱀을 규칙적으로 움직이게 하기 위한 구조체들을 정의하기 위한 구문이다.
 	///SIGALRM 처리를 위한 구조체.
 	struct sigaction sa;
@@ -48,9 +51,9 @@ void snakeGame(int fd[])
 	///SIGALAM의 interval을 정의하기 위한 구조체.
 	struct itimerval timer;
 	timer.it_value.tv_sec = 0;
-	timer.it_value.tv_usec = 250000;	//처음 1회에 대한 interval
+	timer.it_value.tv_usec = 400000;	//처음 1회에 대한 interval
 	timer.it_interval.tv_sec = 0;
-	timer.it_interval.tv_usec = 250000;	//한 번 실행 이후에 대한 interval
+	timer.it_interval.tv_usec = 400000;	//한 번 실행 이후에 대한 interval
 	setitimer (ITIMER_REAL, &timer, NULL);	//위에서 정의한 시간마다 SIGALRM을 발생시킨다.
 
 	//다음의 구문은 스네이크 게임을 다른 게임과 함께 출력하기 위해 위치를 조정하고자, 창 크기를 받아오는 구문이다.
@@ -85,22 +88,18 @@ void snakeGame(int fd[])
 	int snakeLengthMAX = 3;	//처음에는 3칸으로 시작한다.
 	int snakeDirection = EAST;
 	int snakeDirection_OLD = EAST;
-	int snakeGrowthInterval = 30;	//!! 중요. 뱀은 매 30블럭을 움직일 때마다 자람, 이 간격은 게임 시간이 지날 때마다 줄어들어야 함! 임시로 정해둔 내용,
-	int snakeSpeedInterval = 60;	//60칸 움직일 때마다 뱀 속도가 증가.
-
-	///2. 사과
-	Pst apple = { 0,0 };	//사과의 위치를 저장할 변수.
-	Bool IsAppleExist;	//사과 존재 여부.
-	
-	char ch;	//입력 키를 저장하기 위한 변수.
-
-	//다음 구문은 게임을 초기화한다.
-	srand((int)time(NULL));
+	int snakeGrowthInterval = 40;	//!! 중요. 뱀은 매 40블럭을 움직일 때마다 자람, 이 간격은 게임 시간이 지날 때마다 줄어들어야 함! 임시로 정해둔 내용,
+	int snakeSpeedInterval = 80;	//60칸 움직일 때마다 뱀 속도가 증가.
+	double SpeedRatio = 0.98;
 
 	IsSnakeMove = FALSE;	//signal_handler를 받을 함수
 	snake[0].x = snake[0].y = (MAP_SIZE + 2) / 2;	//시작점은 맵의 중간
 	map[snake[0].y][snake[0].x] = SNAKE;
 	snakeLength++;
+
+	///2. 사과
+	Pst apple = { 0,0 };	//사과의 위치를 저장할 변수.
+	Bool IsAppleExist;	//사과 존재 여부.
 
 	do {
 		apple.x = (rand() % MAP_SIZE) + 1;
@@ -108,14 +107,16 @@ void snakeGame(int fd[])
 	} while (map[apple.y][apple.x] != EMPTY);	//빈 칸을 찾아서
 	map[apple.y][apple.x] = APPLE;				//사과를 넣어준다.
 	IsAppleExist = TRUE;						//"사과는 존재한다!"
-	
+
+	char ch;	//입력 키를 저장하기 위한 변수.
+
 	//맵 출력
 	for(y = 0; y < MAP_SIZE + 2; y++){
 		for(x = 0; x < MAP_SIZE + 2; x++){
-			snake_move(x, y, w.ws_col);
-			object_print(map[y][x]);
+			ObjectPrint(x, y, w.ws_col, map[y][x]);
 		}
-	}//////////////////////////////////////////
+	}
+	//////////////////////////////////////////
 	// for(y = 0; y < MAP_SIZE + 2; y++){
 	// 	for(x = 0; x < MAP_SIZE + 2; x++){
 	// 		snake_move(x, y, w.ws_col);
@@ -125,6 +126,11 @@ void snakeGame(int fd[])
 
 	//무한 루프
 	while (TRUE) {
+		for(y = 0; y < MAP_SIZE + 2; y++){
+			for(x = 0; x < MAP_SIZE + 2; x++){
+				ObjectPrint(x, y, w.ws_col, map[y][x]);
+			}
+		}
 		int readByte;
 		ch = 0;
 		readByte = read(fd[0], &ch, 1);	//부모 프로세스에서 pipe를 통해 키보드 값을 읽어옴
@@ -198,14 +204,12 @@ void snakeGame(int fd[])
 
 				case EMPTY:
 					map[snake[snakeLength].y][snake[snakeLength].x] = SNAKE;	// 현재 머리 값을 뱀 머리로 해준다.
-					snake_move(snake[snakeLength].x, snake[snakeLength].y, w.ws_col);	// 커서 옮겨서
-					object_print(SNAKE);										// 뱀 출력
+					ObjectPrint(snake[snakeLength].x, snake[snakeLength].y, w.ws_col, SNAKE);	// 커서 옮겨서 뱀 출력
 					snakeLength++;												// 뱀 길이 ++
 
 					while (snakeLength > snakeLengthMAX){	//뱀 길이가 max보다 길 때
 						map[snake[0].y][snake[0].x] = EMPTY;	//뱀 꼬리 삭제
-						snake_move(snake[0].x, snake[0].y, w.ws_col);	//커서 이동
-						object_print(EMPTY);					//빈 칸 출력
+						ObjectPrint(snake[0].x, snake[0].y, w.ws_col, EMPTY);	//커서 이동 후 빈 칸 출력
 
 						for (x = 0; x < snakeLength; x++) {		// 배열 값을 한 칸씩 이동시킨다.
 							snake[x].x = snake[x + 1].x;
@@ -226,8 +230,7 @@ void snakeGame(int fd[])
 					} while (map[apple.y][apple.x] != EMPTY);	//빈 칸 찾아서
 
 					map[apple.y][apple.x] = APPLE;		//사과로 해준다.
-					snake_move(apple.x, apple.y, w.ws_col);
-					object_print(APPLE);
+					ObjectPrint(apple.x, apple.y, w.ws_col, APPLE);
 					
 					IsAppleExist = TRUE;	//"사과는 존재한다!"
 				}
@@ -240,8 +243,8 @@ void snakeGame(int fd[])
 					snakeLengthMAX++;
 				}
 				if(timeInterval % snakeSpeedInterval == 0){		// 뱀의 속도를 증가시켜준다.
-					timer.it_value.tv_usec *= 0.95;	//처음 1회에 대한 interval
-					timer.it_interval.tv_usec *= 0.95;	//그 이후 반복에 대한 interval
+					timer.it_value.tv_usec *= SpeedRatio;	//처음 1회에 대한 interval
+					timer.it_interval.tv_usec *= SpeedRatio;	//그 이후 반복에 대한 interval
 					setitimer (ITIMER_REAL, &timer, NULL);	//위에서 정의한 시간마다 SIGALRM을 발생시킨다.
 					timeInterval = 0;
 				}
@@ -250,49 +253,46 @@ void snakeGame(int fd[])
 	}
 }
 
-int snake_move(int x, int y, int col){
-	char es[100];    //string to hold the escape sequence
-	char xstr[100];  //need to convert the integers to string
-	char ystr[100];
+int ObjectPrint(int x, int y, int col, int ch){
+	switch (ch) {
+	case EMPTY:
+		printf("\033[%dd\033[%dG  ", y + 1, col - MAP_SIZE*2 + 2*x - 3);
+		fflush(stdout);
+		break;
+	case APPLE:
+		printf("\033[%dd\033[%dG★", y + 1, col - MAP_SIZE*2 + 2*x - 3);
+		fflush(stdout);
+		break;
+	case WALL:
+		printf("\033[%dd\033[%dG▨", y + 1, col - MAP_SIZE*2 + 2*x - 3);
+		fflush(stdout);
+		break;
+	case SNAKE:
+		printf("\033[%dd\033[%dG■", y + 1, col - MAP_SIZE*2 + 2*x - 3);
+		fflush(stdout);
+		break;
+	}
 
-	//convert the screen coordinates to strings
-	sprintf(xstr, "%d", col - MAP_SIZE*2 + 2*x - 3);
-	sprintf(ystr, "%d", y + 1);
-
-	//build the escape sequence
-	es[0]='\0';     //truncate es to zero length
-	strcat(es, "\033[");   //\033 is Esc in octal, 3*8 + 3 = 27
-	strcat(es, ystr);        //concatenate the y move
-	strcat(es, "d");        // d is the code to move the cursor vertically
-
-	strcat(es, "\033[");
-	strcat(es, xstr);
-	strcat(es, "G");     //G is the code to move the cursor horizontally
-
-	//execute the escape sequence
-	printf("%s", es);
-
-	return 0;
 }
 
 void timer_handler(int signum){
 	IsSnakeMove = TRUE;
 }
 
-void object_print(int ch) {
-	switch (ch) {
-	case EMPTY:
-		printf("  ");
-		break;
-	case APPLE:
-		printf("★");
-		break;
-	case WALL:
-		printf("▨");
-		break;
-	case SNAKE:
-		printf("■");
-		break;
-	}
-	fflush(stdout);
-}
+// void object_print(int ch) {
+// 	switch (ch) {
+// 	case EMPTY:
+// 		printf("  ");
+// 		break;
+// 	case APPLE:
+// 		printf("★");
+// 		break;
+// 	case WALL:
+// 		printf("▨");
+// 		break;
+// 	case SNAKE:
+// 		printf("■");
+// 		break;
+// 	}
+// 	fflush(stdout);
+// }

@@ -29,7 +29,7 @@ void letterGame(int fd[])
 
 	current_timer.it_interval.tv_sec = 0;	// sec_interval
 	current_timer.it_interval.tv_usec = 0;	// microsec_interval
-	current_timer.it_value.tv_sec = 5;
+	current_timer.it_value.tv_sec = 10;
 	current_timer.it_value.tv_usec = 0;
 	
 	if(setitimer(ITIMER_REAL, &current_timer , NULL) == -1)
@@ -113,14 +113,18 @@ void letterGame(int fd[])
 	while(1)	// user_input
 	{
 		int read_word = read(fd[0], &input, 1);
-
+    
 		if((read_word == 1) && (input == output || input == output - ('A' - 'a')))	
 		{
 			// wclear(win);
 			map[output_y][output_x] = ' ';
 			answer_count++;
-			current_timer.it_value.tv_sec = 4 - (answer_count / 10);	// TODO : Minus Error
-			current_timer.it_value.tv_usec = 1000 - (answer_count * 100);	// TODO : Minus Error
+
+			int oldCycle = current_timer.it_value.tv_sec * 1000000 + current_timer.it_value.tv_usec;
+
+			oldCycle *= 0.99;
+			current_timer.it_value.tv_sec = oldCycle / 1000000;
+			current_timer.it_value.tv_usec = oldCycle % 1000000;
 			
 			if(setitimer(ITIMER_REAL, &current_timer ,NULL) == -1)	// reset timer
 			{
