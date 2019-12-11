@@ -46,16 +46,16 @@ void letterGame(int fd[])
 	{
 		printf("\033[%dd\033[%dG-", 0, x);
 		fflush(stdout);
-		printf("\033[%dd\033[%dG-", HEIGHT + 1, x);
+		printf("\033[%dd\033[%dG-", HEIGHT + 2, x);
 		fflush(stdout);
 	}
 
 
-	for(y = 0; y < HEIGHT + 2; y++)
+	for(y = 0; y < HEIGHT + 3; y++)
 	{
 		printf("\033[%dd\033[%dG|", y, 0);
 		fflush(stdout);
-		printf("\033[%dd\033[%dG|", y, WIDTH + 1);
+		printf("\033[%dd\033[%dG|", y, WIDTH + 2);
 		fflush(stdout);
 
 	}
@@ -91,21 +91,23 @@ void letterGame(int fd[])
 			output = rand() % ALPHABET + 'A';
 			output_y = rand() % HEIGHT + 2;
 			output_x = rand() % WIDTH + 2;
-			for(x = 1; x < WIDTH + 1; x++)
+			
+			for(x = 1; x < WIDTH + 2; x++)
 			{
 				printf("\033[%dd\033[%dG-", 0, x);
 				fflush(stdout);
-				printf("\033[%dd\033[%dG-", HEIGHT + 1, x);
+				printf("\033[%dd\033[%dG-", HEIGHT + 2, x);
 				fflush(stdout);
 			}
 
-			for(y = 0; y < HEIGHT + 2; y++)
+
+			for(y = 0; y < HEIGHT + 3; y++)
 			{
 				printf("\033[%dd\033[%dG|", y, 0);
 				fflush(stdout);
-				printf("\033[%dd\033[%dG|", y, WIDTH + 1);
+				printf("\033[%dd\033[%dG|", y, WIDTH + 2);
 				fflush(stdout);
-
+			
 			}
 
 			printf("\033[%dd\033[%dG%c",output_y ,output_x, output);
