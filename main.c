@@ -1,10 +1,49 @@
 #include "main.h"
 
 void childHandler(int signum);
+void playGame();
 
 pid_t child[3];
 
 int main(void)
+{
+	printf("\033[H\033[J");
+	
+	while(1)
+	{
+		printf("\033[%dd\033[%dG%s",1 ,1, "1. Start Game");
+		printf("\033[%dd\033[%dG%s",2 ,1, "2. Exit Game");
+
+		int input = _getch();
+
+		switch(input)
+		{
+			case '1':
+				playGame();
+				break;
+
+			case '2':
+				return 1;
+				break;
+
+		}
+	}
+
+
+}
+
+void childHandler(int signum)
+{
+	unsigned int i;
+
+	for (i=0;i<3;i++)
+		kill(child[i],SIGKILL);
+	printf("\033[H\033[J");
+	printf("Game Over");
+	exit(0);
+}
+
+void playGame()
 {
 	int fd[3][2];
 	int i;
@@ -35,15 +74,15 @@ int main(void)
 	{
 	case 0:
 		letterGame(fd[0]);
-		break;
+		exit(0);
 
 	case 1:
 		snakeGame(fd[1]);
-		break;
+		exit(0);
 
 	case 2:
 		hurdleGame(fd[2]);
-		break;
+		exit(0);
 
 	case 3:
 		{
@@ -83,17 +122,6 @@ int main(void)
 					{
 						write(fd[0][1], &ch, 1);
 					}
-
-					else if (ch == 10) // 임시 구문
-					{
-						return 0;
-					}
-
-					// else
-					// {
-					// 	printf(">>%d<<\n", ch);
-					// 	fflush(stdout);
-					// }
 					break;
 				}
 			}
@@ -101,16 +129,7 @@ int main(void)
 		break;
 	}
 
-	return 0;
-}
-
-void childHandler(int signum)
-{
-	unsigned int i;
-
-	for (i=0;i<3;i++)
-		kill(child[i],SIGKILL);
-	printf("\033[H\033[J");
-	printf("Game Over");
 	exit(0);
+	return ;
+
 }
